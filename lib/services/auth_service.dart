@@ -8,110 +8,75 @@ class AuthService {
   final fb.FirebaseAuth _auth = fb.FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Đăng nhập với identifier (username, email, hoặc phone)
+  // Đăng nhập với identifier (email, username, hoặc phone)
   Future<User?> dangNhap(String identifier, String password) async {
     try {
       print('Đang cố gắng đăng nhập với identifier: $identifier');
+
+      // Tìm tài khoản dựa trên identifier
+      QuerySnapshot userQuery;
       if (isEmail(identifier)) {
         print('Đăng nhập bằng email: $identifier');
-        final userCredential = await _auth.signInWithEmailAndPassword(
-          email: identifier,
-          password: password,
-        );
-        final userDoc = await _firestore
+        userQuery = await _firestore
             .collection('users')
-            .doc(userCredential.user!.uid)
+            .where('email', isEqualTo: identifier)
+            .limit(1)
             .get();
-        if (!userDoc.exists) {
-          print('Tài liệu không tồn tại cho uid: ${userCredential.user!.uid}');
-          return null;
-        }
-
-        final user = User(
-          id: userDoc.id,
-          username: userDoc['username'],
-          fullName: userDoc['fullName'],
-          employeeId: userDoc['employeeId'],
-          role: userDoc['role'],
-          phoneNumber: userDoc['phoneNumber'],
-        );
-        print('Đăng nhập thành công với email, user: $user');
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('role', user.role ?? 'Employee');
-        await prefs.setString('userId', user.id);
-        await prefs.setString('username', user.username);
-        return user;
+      } else if (isPhoneNumber(identifier)) {
+        print('Đăng nhập bằng số điện thoại: $identifier');
+        userQuery = await _firestore
+            .collection('users')
+            .where('phoneNumber', isEqualTo: identifier)
+            .limit(1)
+            .get();
       } else {
-        print('Đăng nhập bằng username hoặc phone: $identifier');
-        final userQuery = await _firestore
+        print('Đăng nhập bằng username: $identifier');
+        userQuery = await _firestore
             .collection('users')
             .where('username', isEqualTo: identifier)
             .limit(1)
             .get();
-        if (userQuery.docs.isNotEmpty) {
-          final userData = userQuery.docs.first.data();
-          final email = '${identifier}@btlttcs.com';
-          print('Tìm thấy username, email suy ra: $email');
-          final userCredential = await _auth.signInWithEmailAndPassword(
-            email: email,
-            password: password,
-          );
-          if (userCredential.user!.uid != userQuery.docs.first.id) {
-            print('UID không khớp với tài liệu');
-            return null;
-          }
-
-          final user = User(
-            id: userQuery.docs.first.id,
-            username: userData['username'],
-            fullName: userData['fullName'],
-            employeeId: userData['employeeId'],
-            role: userData['role'],
-            phoneNumber: userData['phoneNumber'],
-          );
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('role', user.role ?? 'Employee');
-          await prefs.setString('userId', user.id);
-          await prefs.setString('username', user.username);
-          return user;
-        } else {
-          final userQueryPhone = await _firestore
-              .collection('users')
-              .where('phoneNumber', isEqualTo: identifier)
-              .limit(1)
-              .get();
-          if (userQueryPhone.docs.isEmpty) {
-            print('Không tìm thấy tài khoản với phone: $identifier');
-            return null;
-          }
-
-          final userData = userQueryPhone.docs.first.data();
-          final email = '${userData['username']}@btlttcs.com';
-          print('Tìm thấy phone, email suy ra: $email');
-          final userCredential = await _auth.signInWithEmailAndPassword(
-            email: email,
-            password: password,
-          );
-          if (userCredential.user!.uid != userQueryPhone.docs.first.id) {
-            print('UID không khớp với tài liệu phone');
-            return null;
-          }
-
-          final user = User(
-            id: userQueryPhone.docs.first.id,
-            username: userData['username'],
-            fullName: userData['fullName'],
-            employeeId: userData['employeeId'],
-            role: userData['role'],
-            phoneNumber: userData['phoneNumber'],
-          );
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('role', user.role ?? 'Employee');
-          await prefs.setString('userId', user.id);
-          await prefs.setString('username', user.username);
-          return user;
-        }
       }
+
+      if (userQuery.docs.isEmpty) {
+        print('Không tìm thấy tài khoản với identifier: $identifier');
+        return null;
+      }
+
+      final userData = userQuery.docs.first.data() as Map<String, dynamic>;
+      final userId = userQuery.docs.first.id;
+      final email = userData['email'] as String?; // Lấy email thực tế từ Firestore
+
+      if (email == null || email.isEmpty) {
+        print('Email không tồn tại cho tài khoản: $identifier');
+        return null;
+      }
+
+      // Thử đăng nhập với email và mật khẩu
+      final userCredential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      if (userCredential.user!.uid != userId) {
+        print('UID không khớp với tài khoản');
+        return null;
+      }
+
+      final user = User(
+        id: userId,
+        username: userData['username'],
+        fullName: userData['fullName'],
+        employeeId: userData['employeeId'],
+        role: userData['role'],
+        phoneNumber: userData['phoneNumber'],
+      );
+      print('Đăng nhập thành công với identifier: $identifier, user: $user');
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('role', user.role ?? 'Employee');
+      await prefs.setString('userId', user.id);
+      await prefs.setString('username', user.username);
+      return user;
     } catch (e) {
       print('Lỗi đăng nhập chi tiết: $e');
       return null;

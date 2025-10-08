@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../utils/date_formatter.dart';
 
@@ -14,21 +15,36 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
   final _descriptionController = TextEditingController();
   DateTime _dueDate = DateTime.now();
   String _selectedAssignee = '';
-  List<Map<String, String>> _users = []; // Thay đổi thành Map để lưu họ tên và ID
+  List<Map<String, String>> _users = [];
   bool _isLoadingUsers = true;
+  String _currentRole = '';
 
   @override
   void initState() {
     super.initState();
-    _loadUsers();
+    _loadUsersAndRole();
   }
 
-  Future<void> _loadUsers() async {
+  Future<void> _loadUsersAndRole() async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      _currentRole = prefs.getString('role') ?? 'Employee';
       final userDetails = await _apiService.layDanhSachNguoiDung();
-      print('Đã tải ${userDetails.length} người dùng');
+
+      // Lọc danh sách người dùng dựa trên vai trò
+      final filteredUsers = <Map<String, String>>[];
+      for (var user in userDetails) {
+        final userRole = await _apiService.layVaiTroCuaNguoiDung(user['username']!);
+        if (_currentRole == 'Admin' && userRole != 'Admin') {
+          filteredUsers.add(user); // Admin thấy Manager và Employee
+        } else if (_currentRole == 'Manager' && userRole == 'Employee') {
+          filteredUsers.add(user); // Manager chỉ thấy Employee
+        }
+      }
+
+      print('Đã tải ${filteredUsers.length} người dùng phù hợp');
       setState(() {
-        _users = userDetails;
+        _users = filteredUsers;
         _isLoadingUsers = false;
         if (_users.isNotEmpty) _selectedAssignee = _users.first['username']!;
       });
@@ -66,7 +82,9 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
         print('Đã thêm nhiệm vụ cho: $_selectedAssignee');
         Navigator.pop(context);
       } catch (e) {
-        print('Lỗi thêm nhiệm vụ: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
