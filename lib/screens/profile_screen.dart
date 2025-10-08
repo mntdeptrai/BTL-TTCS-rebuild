@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/auth_service.dart';
 import '../utils/error_handler.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -10,9 +10,11 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final _authService = AuthService();
-  final _usernameController = TextEditingController();
-  final _phoneController = TextEditingController();
   String? _userId;
+  String? _username;
+  String? _fullName;
+  String? _phoneNumber;
+  final _phoneController = TextEditingController();
   bool _isLoading = true;
   String _currentRole = '';
 
@@ -32,8 +34,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         print('Đã tải profile: $user');
         if (user != null) {
           setState(() {
-            _usernameController.text = user.username ?? '';
-            _phoneController.text = user.phoneNumber ?? '';
+            _username = user.username;
+            _fullName = user.fullName ?? ''; // Sử dụng fullName từ User model
+            _phoneNumber = user.phoneNumber;
+            _phoneController.text = _phoneNumber ?? '';
             _isLoading = false;
           });
         } else {
@@ -52,15 +56,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _updateProfile() async {
-    if (_userId != null) {
+    if (_userId != null && _phoneController.text.isNotEmpty) {
       try {
-        await _authService.capNhatProfile(_userId!, _usernameController.text, _phoneController.text);
+        await _authService.capNhatProfile(_userId!, _username!, _phoneController.text);
+        setState(() {
+          _phoneNumber = _phoneController.text;
+        });
         print('Đã cập nhật profile');
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Cập nhật profile thành công')));
       } catch (e) {
         print('Lỗi cập nhật profile: $e');
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ErrorHandler.getErrorMessage(e))));
       }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Vui lòng nhập số điện thoại')));
     }
   }
 
@@ -111,28 +120,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
           : Padding(
         padding: EdgeInsets.all(16.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(Icons.person, size: 50),
             Text('Vai trò: $_currentRole', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             SizedBox(height: 20),
-            TextField(
-              controller: _usernameController,
-              decoration: InputDecoration(labelText: 'Tên đăng nhập'),
-            ),
+            Text('Tên đăng nhập: $_username', style: TextStyle(fontSize: 16)), // Chỉ đọc
+            SizedBox(height: 10),
+            Text('Họ và tên: $_fullName', style: TextStyle(fontSize: 16)), // Chỉ đọc
+            SizedBox(height: 10),
             TextField(
               controller: _phoneController,
               decoration: InputDecoration(labelText: 'Số điện thoại'),
+              keyboardType: TextInputType.phone,
             ),
             SizedBox(height: 20),
             ElevatedButton.icon(
               onPressed: _updateProfile,
-              icon: Icon(Icons.save, color: Colors.black), // Đổi màu sang đen
+              icon: Icon(Icons.save, color: Colors.black),
               label: Text('Cập nhật Profile'),
             ),
             SizedBox(height: 10),
             ElevatedButton.icon(
               onPressed: _changePassword,
-              icon: Icon(Icons.lock, color: Colors.black), // Đổi màu sang đen
+              icon: Icon(Icons.lock, color: Colors.black),
               label: Text('Đổi mật khẩu'),
             ),
           ],
