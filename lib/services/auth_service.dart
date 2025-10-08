@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -29,6 +30,8 @@ class AuthService {
         final user = User(
           id: userDoc.id,
           username: userDoc['username'],
+          fullName: userDoc['fullName'],
+          employeeId: userDoc['employeeId'],
           role: userDoc['role'],
           phoneNumber: userDoc['phoneNumber'],
         );
@@ -61,6 +64,8 @@ class AuthService {
           final user = User(
             id: userQuery.docs.first.id,
             username: userData['username'],
+            fullName: userData['fullName'],
+            employeeId: userData['employeeId'],
             role: userData['role'],
             phoneNumber: userData['phoneNumber'],
           );
@@ -95,6 +100,8 @@ class AuthService {
           final user = User(
             id: userQueryPhone.docs.first.id,
             username: userData['username'],
+            fullName: userData['fullName'],
+            employeeId: userData['employeeId'],
             role: userData['role'],
             phoneNumber: userData['phoneNumber'],
           );
@@ -111,25 +118,32 @@ class AuthService {
     }
   }
 
-  // Đăng ký với username, email, phone, và password
-  Future<User?> dangKy(String username, String email, String password, String role, String phoneNumber) async {
+  // Đăng ký với username, email, fullName, password, role, và phone
+  Future<User?> dangKy(String username, String email, String fullName, String password, String role, String phoneNumber) async {
     try {
       final userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
+      // Tạo ID nhân viên ngẫu nhiên (1000 - 9999)
+      final random = Random();
+      final employeeId = (1000 + random.nextInt(9000)).toString();
       final user = User(
         id: userCredential.user!.uid,
         username: username,
+        fullName: fullName,
+        employeeId: employeeId,
         role: role,
         phoneNumber: phoneNumber,
       );
       await _firestore.collection('users').doc(user.id).set({
         'id': user.id,
         'username': user.username,
+        'fullName': user.fullName,
+        'employeeId': user.employeeId,
         'role': user.role,
         'phoneNumber': user.phoneNumber,
-        'email': email, // Lưu email vào Firestore
+        'email': email,
       });
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('role', user.role);
@@ -166,6 +180,8 @@ class AuthService {
         return User(
           id: userDoc.id,
           username: userDoc['username'],
+          fullName: userDoc['fullName'],
+          employeeId: userDoc['employeeId'],
           role: userDoc['role'],
           phoneNumber: userDoc['phoneNumber'],
         );

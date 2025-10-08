@@ -8,6 +8,7 @@ class Task {
   final bool isCompleted;
   final String userId;
   final String assignedTo;
+  String? employeeId; // Thêm tạm để lưu khi lấy từ Firestore
 
   Task({
     required this.id,
@@ -17,6 +18,7 @@ class Task {
     required this.isCompleted,
     required this.userId,
     required this.assignedTo,
+    this.employeeId,
   });
 
   factory Task.fromJson(Map<String, dynamic> json, String id) {
@@ -28,6 +30,7 @@ class Task {
       isCompleted: json['isCompleted'] ?? false,
       userId: json['userId'] ?? '',
       assignedTo: json['assignedTo'] ?? '',
+      employeeId: null, // Khởi tạo null, sẽ lấy sau
     );
   }
 

@@ -14,7 +14,7 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
   final _descriptionController = TextEditingController();
   DateTime _dueDate = DateTime.now();
   String _selectedAssignee = '';
-  List<String> _users = [];
+  List<Map<String, String>> _users = []; // Thay đổi thành Map để lưu họ tên và ID
   bool _isLoadingUsers = true;
 
   @override
@@ -25,12 +25,12 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
 
   Future<void> _loadUsers() async {
     try {
-      final users = await _apiService.layDanhSachNguoiDung();
-      print('Đã tải ${users.length} người dùng');
+      final userDetails = await _apiService.layDanhSachNguoiDung();
+      print('Đã tải ${userDetails.length} người dùng');
       setState(() {
-        _users = users;
+        _users = userDetails;
         _isLoadingUsers = false;
-        if (_users.isNotEmpty) _selectedAssignee = _users.first;
+        if (_users.isNotEmpty) _selectedAssignee = _users.first['username']!;
       });
     } catch (e) {
       print('Lỗi tải người dùng: $e');
@@ -94,7 +94,7 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
             ),
             ListTile(
               title: Text('Ngày đến hạn: ${DateFormatter.formatDate(_dueDate)}'),
-              trailing: Icon(Icons.calendar_today, color: Colors.black), // Đổi màu sang đen
+              trailing: Icon(Icons.calendar_today, color: Colors.black),
               onTap: _selectDueDate,
             ),
             if (_isLoadingUsers)
@@ -103,10 +103,10 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
               DropdownButton<String>(
                 hint: Text('Chọn nhân viên'),
                 value: _selectedAssignee.isNotEmpty ? _selectedAssignee : null,
-                items: _users.map((String user) {
+                items: _users.map((Map<String, String> user) {
                   return DropdownMenuItem<String>(
-                    value: user,
-                    child: Text(user),
+                    value: user['username'],
+                    child: Text('${user['fullName']} (ID: ${user['employeeId']})'),
                   );
                 }).toList(),
                 onChanged: (String? newValue) {
@@ -118,7 +118,7 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
             SizedBox(height: 20),
             ElevatedButton.icon(
               onPressed: _themNhiemVu,
-              icon: Icon(Icons.add, color: Colors.black), // Đổi màu sang đen
+              icon: Icon(Icons.add, color: Colors.black),
               label: Text('Thêm Nhiệm Vụ'),
             ),
           ],

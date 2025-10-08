@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../models/task.dart';
-import 'add_task_screen.dart';
+import 'add_task_screen.dart'; // Đảm bảo import file này
 import 'login_screen.dart';
 import 'profile_screen.dart';
 import '../utils/date_formatter.dart';
@@ -18,6 +19,7 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> {
   List<Task> _tasks = [];
   bool _isLoading = true;
   final _authService = AuthService();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
   void initState() {
@@ -29,6 +31,17 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> {
     try {
       final apiService = ApiService();
       final tasks = await apiService.layNhiemVu();
+      // Lấy employeeId cho mỗi task
+      for (var task in tasks) {
+        final userDoc = await _firestore
+            .collection('users')
+            .where('username', isEqualTo: task.assignedTo)
+            .limit(1)
+            .get();
+        if (userDoc.docs.isNotEmpty) {
+          task.employeeId = userDoc.docs.first.data()['employeeId']?.toString() ?? 'N/A';
+        }
+      }
       setState(() {
         _tasks = tasks;
         _isLoading = false;
@@ -77,7 +90,7 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => ManHinhThemNhiemVu()),
+                      MaterialPageRoute(builder: (context) => ManHinhThemNhiemVu()), // Sử dụng constructor
                     ).then((_) => _layDanhSachNhiemVu());
                   },
                 ),
@@ -115,7 +128,7 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> {
                     children: [
                       if (task.description != null) Text(task.description!),
                       Text('Đến hạn: ${DateFormatter.formatDate(task.dueDate)}'),
-                      Text('Giao cho: ${task.assignedTo}'),
+                      Text('Giao cho: ${task.assignedTo} (ID: ${task.employeeId ?? 'N/A'})'),
                     ],
                   ),
                   trailing: Checkbox(

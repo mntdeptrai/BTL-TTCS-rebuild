@@ -14,6 +14,7 @@ class _ManHinhDangNhapState extends State<ManHinhDangNhap> {
   final _passwordController = TextEditingController();
   final _usernameController = TextEditingController(); // Trường riêng cho username
   final _emailController = TextEditingController();   // Trường riêng cho email
+  final _fullNameController = TextEditingController(); // Trường riêng cho họ tên
   final _phoneController = TextEditingController();   // Trường riêng cho phone
   final _confirmPasswordController = TextEditingController(); // Trường xác nhận mật khẩu
   bool _isLogin = true;
@@ -26,6 +27,7 @@ class _ManHinhDangNhapState extends State<ManHinhDangNhap> {
       _passwordController.clear();
       _usernameController.clear();
       _emailController.clear();
+      _fullNameController.clear();
       _phoneController.clear();
       _confirmPasswordController.clear();
     });
@@ -61,7 +63,8 @@ class _ManHinhDangNhapState extends State<ManHinhDangNhap> {
         }
         final user = await _authService.dangKy(
           _usernameController.text,
-          _emailController.text, // Sử dụng email từ trường riêng
+          _emailController.text,
+          _fullNameController.text, // Thêm họ tên
           _passwordController.text,
           'Employee', // Mặc định role là Employee
           _phoneController.text,
@@ -101,6 +104,10 @@ class _ManHinhDangNhapState extends State<ManHinhDangNhap> {
               TextField(
                 controller: _usernameController,
                 decoration: InputDecoration(labelText: 'Tên đăng nhập'),
+              ),
+              TextField(
+                controller: _fullNameController,
+                decoration: InputDecoration(labelText: 'Họ và tên'),
               ),
               TextField(
                 controller: _emailController,
