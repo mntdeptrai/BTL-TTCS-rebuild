@@ -153,6 +153,30 @@ class AuthService {
     await _auth.currentUser!.updatePassword(newPassword);
   }
 
+  // Lấy thông tin người dùng
+  Future<User?> layThongTinNguoiDung(String userId) async {
+    try {
+      final userDoc = await _firestore.collection('users').doc(userId).get();
+      if (userDoc.exists) {
+        return User(
+          id: userDoc.id,
+          username: userDoc['username'],
+          role: userDoc['role'],
+          phoneNumber: userDoc['phoneNumber'],
+        );
+      }
+      return null;
+    } catch (e) {
+      print('Lỗi khi lấy thông tin người dùng: $e');
+      return null;
+    }
+  }
+
+  // Lấy người dùng hiện tại
+  fb.User? layNguoiDungHienTai() {
+    return _auth.currentUser;
+  }
+
   // Kiểm tra xem chuỗi có phải là email
   bool isEmail(String input) {
     final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');

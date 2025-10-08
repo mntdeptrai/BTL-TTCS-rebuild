@@ -25,11 +25,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _userId = prefs.getString('userId');
     if (_userId != null) {
       try {
-        final userDoc = await _authService._firestore.collection('users').doc(_userId).get();
-        if (userDoc.exists) {
+        final user = await _authService.layThongTinNguoiDung(_userId!);
+        if (user != null) {
           setState(() {
-            _usernameController.text = userDoc['username'] ?? '';
-            _phoneController.text = userDoc['phoneNumber'] ?? '';
+            _usernameController.text = user.username ?? '';
+            _phoneController.text = user.phoneNumber ?? '';
           });
         }
       } catch (e) {
@@ -50,7 +50,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _changePassword() async {
-    final currentUser = _authService._auth.currentUser;
+    final currentUser = _authService.layNguoiDungHienTai();
     if (currentUser != null) {
       final newPasswordController = TextEditingController();
       showDialog(
@@ -93,7 +93,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         padding: EdgeInsets.all(16.0),
         child: Column(
           children: [
-            Icon(Icons.person, size: 50), // Thay CircleAvatar bằng Icon
+            Icon(Icons.person, size: 50),
             TextField(
               controller: _usernameController,
               decoration: InputDecoration(labelText: 'Tên đăng nhập'),

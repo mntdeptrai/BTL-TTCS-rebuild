@@ -1,30 +1,33 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:btl_ttcs/main.dart';
+import 'package:btl_ttcs/main.dart'; // Đảm bảo import đúng file main.dart
+import '../lib/firebase_options.dart'; // Sửa đường dẫn import thành ../lib/firebase_options.dart
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
+  // Khởi tạo Firebase cho test
+  setupFirebase() async {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  }
+
+  testWidgets('Login screen displays correctly', (WidgetTester tester) async {
+    // Khởi tạo Firebase trước khi chạy test
+    await setupFirebase();
+
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(UngDungQuanLyNhiemVu());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // Verify that the login screen is displayed.
+    expect(find.text('Đăng Nhập'), findsOneWidget); // Kiểm tra tiêu đề AppBar
+    expect(find.byType(TextField), findsNWidgets(2)); // Kiểm tra 2 TextField (identifier và password)
+    expect(find.text('Đăng Ký'), findsOneWidget); // Kiểm tra nút Đăng Ký
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
+    // Simulate tapping the "Đăng Ký" button and trigger a frame.
+    await tester.tap(find.text('Đăng Ký'));
     await tester.pump();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Verify that the screen switches to registration mode.
+    expect(find.text('Đăng Ký'), findsNWidgets(2)); // Tiêu đề và nút
+    expect(find.text('Đăng Nhập'), findsOneWidget); // Nút chuyển sang đăng nhập
   });
 }
