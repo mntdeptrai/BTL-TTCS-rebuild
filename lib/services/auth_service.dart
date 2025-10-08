@@ -36,7 +36,7 @@ class AuthService {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('role', user.role ?? 'Employee');
         await prefs.setString('userId', user.id);
-        await prefs.setString('username', user.username); // Thêm lưu username
+        await prefs.setString('username', user.username);
         return user;
       } else {
         print('Đăng nhập bằng username hoặc phone: $identifier');
@@ -67,7 +67,7 @@ class AuthService {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('role', user.role ?? 'Employee');
           await prefs.setString('userId', user.id);
-          await prefs.setString('username', user.username); // Thêm lưu username
+          await prefs.setString('username', user.username);
           return user;
         } else {
           final userQueryPhone = await _firestore
@@ -101,7 +101,7 @@ class AuthService {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('role', user.role ?? 'Employee');
           await prefs.setString('userId', user.id);
-          await prefs.setString('username', user.username); // Thêm lưu username
+          await prefs.setString('username', user.username);
           return user;
         }
       }
@@ -111,10 +111,9 @@ class AuthService {
     }
   }
 
-  // Đăng ký với username, password, và phone
-  Future<User?> dangKy(String username, String password, String role, String phoneNumber) async {
+  // Đăng ký với username, email, phone, và password
+  Future<User?> dangKy(String username, String email, String password, String role, String phoneNumber) async {
     try {
-      final email = '$username@btlttcs.com';
       final userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
@@ -130,11 +129,12 @@ class AuthService {
         'username': user.username,
         'role': user.role,
         'phoneNumber': user.phoneNumber,
+        'email': email, // Lưu email vào Firestore
       });
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('role', user.role);
       await prefs.setString('userId', user.id);
-      await prefs.setString('username', user.username); // Thêm lưu username
+      await prefs.setString('username', user.username);
       return user;
     } catch (e) {
       print('Lỗi đăng ký: $e');
@@ -150,7 +150,7 @@ class AuthService {
     });
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('userId', userId);
-    await prefs.setString('username', username); // Cập nhật username
+    await prefs.setString('username', username);
   }
 
   // Đổi mật khẩu
@@ -200,6 +200,6 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('role');
     await prefs.remove('userId');
-    await prefs.remove('username'); // Xóa username
+    await prefs.remove('username');
   }
 }
