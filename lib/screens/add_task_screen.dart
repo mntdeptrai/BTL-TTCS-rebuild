@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../services/api_service.dart';
 import '../utils/date_formatter.dart';
 
@@ -14,6 +15,7 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
   DateTime _dueDate = DateTime.now();
   String _selectedAssignee = '';
   List<String> _users = [];
+  bool _isLoadingUsers = true;
 
   @override
   void initState() {
@@ -22,11 +24,20 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
   }
 
   Future<void> _loadUsers() async {
-    final users = await _apiService.layDanhSachNguoiDung();
-    setState(() {
-      _users = users;
-      if (_users.isNotEmpty) _selectedAssignee = _users.first;
-    });
+    try {
+      final users = await _apiService.layDanhSachNguoiDung();
+      print('Đã tải ${users.length} người dùng');
+      setState(() {
+        _users = users;
+        _isLoadingUsers = false;
+        if (_users.isNotEmpty) _selectedAssignee = _users.first;
+      });
+    } catch (e) {
+      print('Lỗi tải người dùng: $e');
+      setState(() {
+        _isLoadingUsers = false;
+      });
+    }
   }
 
   Future<void> _selectDueDate() async {
@@ -45,13 +56,18 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
 
   Future<void> _themNhiemVu() async {
     if (_titleController.text.isNotEmpty && _selectedAssignee.isNotEmpty) {
-      await _apiService.themNhiemVu(
-        _titleController.text,
-        _descriptionController.text,
-        _dueDate,
-        _selectedAssignee,
-      );
-      Navigator.pop(context);
+      try {
+        await _apiService.themNhiemVu(
+          _titleController.text,
+          _descriptionController.text,
+          _dueDate,
+          _selectedAssignee,
+        );
+        print('Đã thêm nhiệm vụ cho: $_selectedAssignee');
+        Navigator.pop(context);
+      } catch (e) {
+        print('Lỗi thêm nhiệm vụ: $e');
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Vui lòng nhập tiêu đề và chọn nhân viên')),
@@ -78,28 +94,32 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
             ),
             ListTile(
               title: Text('Ngày đến hạn: ${DateFormatter.formatDate(_dueDate)}'),
-              trailing: Icon(Icons.calendar_today),
+              trailing: Icon(Icons.calendar_today, color: Colors.black), // Đổi màu sang đen
               onTap: _selectDueDate,
             ),
-            DropdownButton<String>(
-              hint: Text('Chọn nhân viên'),
-              value: _selectedAssignee.isNotEmpty ? _selectedAssignee : null,
-              items: _users.map((String user) {
-                return DropdownMenuItem<String>(
-                  value: user,
-                  child: Text(user),
-                );
-              }).toList(),
-              onChanged: (String? newValue) {
-                setState(() {
-                  _selectedAssignee = newValue ?? '';
-                });
-              },
-            ),
+            if (_isLoadingUsers)
+              CircularProgressIndicator()
+            else
+              DropdownButton<String>(
+                hint: Text('Chọn nhân viên'),
+                value: _selectedAssignee.isNotEmpty ? _selectedAssignee : null,
+                items: _users.map((String user) {
+                  return DropdownMenuItem<String>(
+                    value: user,
+                    child: Text(user),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    _selectedAssignee = newValue ?? '';
+                  });
+                },
+              ),
             SizedBox(height: 20),
-            ElevatedButton(
+            ElevatedButton.icon(
               onPressed: _themNhiemVu,
-              child: Text('Thêm Nhiệm Vụ'),
+              icon: Icon(Icons.add, color: Colors.black), // Đổi màu sang đen
+              label: Text('Thêm Nhiệm Vụ'),
             ),
           ],
         ),

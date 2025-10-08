@@ -13,6 +13,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _usernameController = TextEditingController();
   final _phoneController = TextEditingController();
   String? _userId;
+  bool _isLoading = true;
+  String _currentRole = '';
 
   @override
   void initState() {
@@ -23,17 +25,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadProfile() async {
     final prefs = await SharedPreferences.getInstance();
     _userId = prefs.getString('userId');
+    _currentRole = prefs.getString('role') ?? 'Employee';
     if (_userId != null) {
       try {
         final user = await _authService.layThongTinNguoiDung(_userId!);
+        print('Đã tải profile: $user');
         if (user != null) {
           setState(() {
             _usernameController.text = user.username ?? '';
             _phoneController.text = user.phoneNumber ?? '';
+            _isLoading = false;
+          });
+        } else {
+          setState(() {
+            _isLoading = false;
           });
         }
       } catch (e) {
+        print('Lỗi tải profile: $e');
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ErrorHandler.getErrorMessage(e))));
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }
@@ -42,8 +55,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (_userId != null) {
       try {
         await _authService.capNhatProfile(_userId!, _usernameController.text, _phoneController.text);
+        print('Đã cập nhật profile');
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Cập nhật profile thành công')));
       } catch (e) {
+        print('Lỗi cập nhật profile: $e');
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ErrorHandler.getErrorMessage(e))));
       }
     }
@@ -82,6 +97,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         ),
       );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Không tìm thấy người dùng hiện tại')));
     }
   }
 
@@ -89,11 +106,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('Profile')),
-      body: Padding(
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator())
+          : Padding(
         padding: EdgeInsets.all(16.0),
         child: Column(
           children: [
             Icon(Icons.person, size: 50),
+            Text('Vai trò: $_currentRole', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            SizedBox(height: 20),
             TextField(
               controller: _usernameController,
               decoration: InputDecoration(labelText: 'Tên đăng nhập'),
@@ -103,13 +124,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
               decoration: InputDecoration(labelText: 'Số điện thoại'),
             ),
             SizedBox(height: 20),
-            ElevatedButton(
+            ElevatedButton.icon(
               onPressed: _updateProfile,
-              child: Text('Cập nhật Profile'),
+              icon: Icon(Icons.save, color: Colors.black), // Đổi màu sang đen
+              label: Text('Cập nhật Profile'),
             ),
-            ElevatedButton(
+            SizedBox(height: 10),
+            ElevatedButton.icon(
               onPressed: _changePassword,
-              child: Text('Đổi mật khẩu'),
+              icon: Icon(Icons.lock, color: Colors.black), // Đổi màu sang đen
+              label: Text('Đổi mật khẩu'),
             ),
           ],
         ),

@@ -8,14 +8,17 @@ class ApiService {
   Future<List<Task>> layNhiemVu() async {
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getString('userId') ?? '';
+    final username = prefs.getString('username') ?? ''; // Lấy username
     final role = prefs.getString('role') ?? '';
-    QuerySnapshot query;
+    Query query;
     if (role == 'Admin' || role == 'Manager') {
-      query = await _firestore.collection('tasks').get();
+      query = _firestore.collection('tasks'); // Admin/Manager thấy tất cả
     } else {
-      query = await _firestore.collection('tasks').where('userId', isEqualTo: userId).get();
+      // Employee thấy task được giao cho họ (assignedTo == username)
+      query = _firestore.collection('tasks').where('assignedTo', isEqualTo: username);
     }
-    return query.docs.map((doc) => Task.fromJson(doc.data() as Map<String, dynamic>, doc.id)).toList();
+    final snapshot = await query.get();
+    return snapshot.docs.map((doc) => Task.fromJson(doc.data() as Map<String, dynamic>, doc.id)).toList();
   }
 
   Future<void> themNhiemVu(String title, String description, DateTime dueDate, String assignedTo) async {
@@ -28,8 +31,8 @@ class ApiService {
       'description': description,
       'dueDate': dueDate,
       'isCompleted': false,
-      'userId': userId,
-      'assignedTo': assignedTo,
+      'userId': userId, // Người tạo
+      'assignedTo': assignedTo, // Người được giao
     });
   }
 
@@ -37,7 +40,7 @@ class ApiService {
     await _firestore.collection('tasks').doc(taskId).update({'isCompleted': isCompleted});
   }
 
-  // Thêm phương thức để lấy danh sách người dùng
+  // Lấy danh sách người dùng
   Future<List<String>> layDanhSachNguoiDung() async {
     final snapshot = await _firestore.collection('users').get();
     return snapshot.docs.map((doc) => doc['username'] as String).toList();

@@ -36,6 +36,7 @@ class AuthService {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('role', user.role ?? 'Employee');
         await prefs.setString('userId', user.id);
+        await prefs.setString('username', user.username); // Thêm lưu username
         return user;
       } else {
         print('Đăng nhập bằng username hoặc phone: $identifier');
@@ -66,6 +67,7 @@ class AuthService {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('role', user.role ?? 'Employee');
           await prefs.setString('userId', user.id);
+          await prefs.setString('username', user.username); // Thêm lưu username
           return user;
         } else {
           final userQueryPhone = await _firestore
@@ -99,6 +101,7 @@ class AuthService {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('role', user.role ?? 'Employee');
           await prefs.setString('userId', user.id);
+          await prefs.setString('username', user.username); // Thêm lưu username
           return user;
         }
       }
@@ -131,6 +134,7 @@ class AuthService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('role', user.role);
       await prefs.setString('userId', user.id);
+      await prefs.setString('username', user.username); // Thêm lưu username
       return user;
     } catch (e) {
       print('Lỗi đăng ký: $e');
@@ -145,7 +149,8 @@ class AuthService {
       'phoneNumber': phoneNumber,
     });
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('userId', userId); // Cập nhật lại SharedPreferences nếu cần
+    await prefs.setString('userId', userId);
+    await prefs.setString('username', username); // Cập nhật username
   }
 
   // Đổi mật khẩu
@@ -195,5 +200,6 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('role');
     await prefs.remove('userId');
+    await prefs.remove('username'); // Xóa username
   }
 }

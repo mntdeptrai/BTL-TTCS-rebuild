@@ -8,7 +8,6 @@ import 'add_task_screen.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
 import '../utils/date_formatter.dart';
-import '../utils/constants.dart';
 
 class ManHinhDanhSachNhiemVu extends StatefulWidget {
   @override
@@ -34,10 +33,12 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> {
         _tasks = tasks;
         _isLoading = false;
       });
+      print('Đã tải ${tasks.length} nhiệm vụ');
     } catch (e) {
       setState(() {
         _isLoading = false;
       });
+      print('Lỗi tải nhiệm vụ: $e');
     }
   }
 
@@ -49,7 +50,10 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> {
 
   Future<void> _dangXuat() async {
     await _authService.dangXuat();
-    Navigator.pushReplacementNamed(context, Constants.routeLogin);
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => ManHinhDangNhap()),
+    );
   }
 
   @override
@@ -68,40 +72,57 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> {
             actions: [
               if (role == 'Admin' || role == 'Manager')
                 IconButton(
-                  icon: Icon(Icons.add),
+                  icon: Icon(Icons.add, color: Colors.black),
+                  tooltip: 'Thêm nhiệm vụ',
                   onPressed: () {
-                    Navigator.pushNamed(context, Constants.routeAddTask).then((_) => _layDanhSachNhiemVu());
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => ManHinhThemNhiemVu()),
+                    ).then((_) => _layDanhSachNhiemVu());
                   },
                 ),
               IconButton(
-                icon: Icon(Icons.person),
+                icon: Icon(Icons.person, color: Colors.black),
+                tooltip: 'Profile',
                 onPressed: () {
-                  Navigator.pushNamed(context, Constants.routeProfile);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => ProfileScreen()),
+                  );
                 },
               ),
               IconButton(
-                icon: Icon(Icons.logout),
+                icon: Icon(Icons.logout, color: Colors.black),
+                tooltip: 'Đăng xuất',
                 onPressed: _dangXuat,
               ),
             ],
           ),
           body: _isLoading
               ? Center(child: CircularProgressIndicator())
+              : _tasks.isEmpty
+              ? Center(child: Text('Chưa có nhiệm vụ nào được giao'))
               : ListView.builder(
             itemCount: _tasks.length,
             itemBuilder: (context, index) {
               final task = _tasks[index];
-              return ListTile(
-                title: Text(task.title),
-                subtitle: Text(
-                  '${task.description ?? ''}\n'
-                      'Đến hạn: ${DateFormatter.formatDate(task.dueDate)}\n'
-                      'Giao cho: ${task.assignedTo}',
-                ),
-                trailing: Checkbox(
-                  value: task.isCompleted,
-                  onChanged: (value) =>
-                      _chuyenTrangThaiNhiemVu(task.id, task.isCompleted),
+              return Card(
+                margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: ListTile(
+                  title: Text(task.title, style: TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (task.description != null) Text(task.description!),
+                      Text('Đến hạn: ${DateFormatter.formatDate(task.dueDate)}'),
+                      Text('Giao cho: ${task.assignedTo}'),
+                    ],
+                  ),
+                  trailing: Checkbox(
+                    value: task.isCompleted,
+                    onChanged: (value) =>
+                        _chuyenTrangThaiNhiemVu(task.id, task.isCompleted),
+                  ),
                 ),
               );
             },
