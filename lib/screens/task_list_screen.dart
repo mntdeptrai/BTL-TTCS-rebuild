@@ -46,12 +46,12 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> {
         _tasks = tasks;
         _isLoading = false;
       });
-      print('Đã tải ${tasks.length} nhiệm vụ');
+      print('Đã tải ${tasks.length} công việc');
     } catch (e) {
       setState(() {
         _isLoading = false;
       });
-      print('Lỗi tải nhiệm vụ: $e');
+      print('Lỗi tải công việc: $e');
     }
   }
 
@@ -81,12 +81,12 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> {
         print('Vai trò hiện tại: $role');
         return Scaffold(
           appBar: AppBar(
-            title: Text('Danh Sách Nhiệm Vụ'),
+            title: Text('Danh Sách Công Việc'),
             actions: [
               if (role == 'Admin' || role == 'Manager')
                 IconButton(
                   icon: Icon(Icons.add, color: Colors.black),
-                  tooltip: 'Thêm nhiệm vụ',
+                  tooltip: 'Thêm công việc',
                   onPressed: () {
                     Navigator.push(
                       context,
@@ -114,7 +114,7 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> {
           body: _isLoading
               ? Center(child: CircularProgressIndicator())
               : _tasks.isEmpty
-              ? Center(child: Text('Chưa có nhiệm vụ nào được giao'))
+              ? Center(child: Text('Chưa có công việc nào được giao'))
               : ListView.builder(
             itemCount: _tasks.length,
             itemBuilder: (context, index) {
