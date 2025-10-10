@@ -8,6 +8,7 @@ import '../models/task.dart';
 import 'add_task_screen.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
+import 'task_detail_screen.dart';
 import '../utils/date_formatter.dart';
 
 class ManHinhDanhSachNhiemVu extends StatefulWidget {
@@ -84,7 +85,7 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> {
             actions: [
               if (role == 'Admin' || role == 'Manager')
                 IconButton(
-                  icon: Icon(Icons.add),
+                  icon: Icon(Icons.add, color: Colors.black),
                   tooltip: 'Thêm nhiệm vụ',
                   onPressed: () {
                     Navigator.push(
@@ -94,7 +95,7 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> {
                   },
                 ),
               IconButton(
-                icon: Icon(Icons.person),
+                icon: Icon(Icons.person, color: Colors.black),
                 tooltip: 'Profile',
                 onPressed: () {
                   Navigator.push(
@@ -104,7 +105,7 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> {
                 },
               ),
               IconButton(
-                icon: Icon(Icons.logout),
+                icon: Icon(Icons.logout, color: Colors.black),
                 tooltip: 'Đăng xuất',
                 onPressed: _dangXuat,
               ),
@@ -120,6 +121,7 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> {
               final task = _tasks[index];
               return Card(
                 margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                color: task.isCompleted ? Colors.green[100] : Colors.red[100], // Màu nền dựa trên trạng thái
                 child: ListTile(
                   title: Text(task.title, style: TextStyle(fontWeight: FontWeight.bold)),
                   subtitle: Column(
@@ -130,13 +132,14 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> {
                       Text('Giao cho: ${task.assignedTo} (ID: ${task.employeeId ?? 'N/A'})'),
                     ],
                   ),
-                  trailing: IconButton(
-                    icon: Icon(
-                      task.isCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
-                      color: task.isCompleted ? Colors.green : Colors.black,
-                    ),
-                    onPressed: () => _chuyenTrangThaiNhiemVu(task.id, task.isCompleted),
-                  ),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => TaskDetailScreen(task: task),
+                      ),
+                    ).then((_) => _layDanhSachNhiemVu()); // Làm mới danh sách
+                  },
                 ),
               );
             },
