@@ -9,6 +9,7 @@ import 'add_task_screen.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
 import 'task_detail_screen.dart';
+import 'performance_screen.dart';
 import '../utils/date_formatter.dart';
 
 class ManHinhDanhSachNhiemVu extends StatefulWidget {
@@ -61,6 +62,24 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> {
     _layDanhSachNhiemVu();
   }
 
+  Future<void> _markAsRead(String taskId) async {
+    try {
+      await _firestore.collection('tasks').doc(taskId).update({
+        'isRead': true,
+      });
+      setState(() {
+        final taskIndex = _tasks.indexWhere((task) => task.id == taskId);
+        if (taskIndex != -1) {
+          _tasks[taskIndex].isRead = true; // Gán lại giá trị
+        }
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lỗi đánh dấu đã đọc: $e')),
+      );
+    }
+  }
+
   Future<void> _dangXuat() async {
     await _authService.dangXuat();
     Navigator.pushReplacement(
@@ -105,6 +124,16 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> {
                 },
               ),
               IconButton(
+                icon: Icon(Icons.bar_chart, color: Colors.black),
+                tooltip: 'Thống kê',
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => PerformanceScreen()),
+                  );
+                },
+              ),
+              IconButton(
                 icon: Icon(Icons.logout, color: Colors.black),
                 tooltip: 'Đăng xuất',
                 onPressed: _dangXuat,
@@ -119,11 +148,26 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> {
             itemCount: _tasks.length,
             itemBuilder: (context, index) {
               final task = _tasks[index];
+              Color? cardColor;
+              if (!task.isRead && !task.isCompleted) {
+                cardColor = Colors.white; // Chưa đọc + Chưa hoàn thành: Màu trắng
+              } else if (task.isRead && !task.isCompleted) {
+                cardColor = Colors.red[100]; // Đã đọc + Chưa hoàn thành: Màu đỏ nhạt
+              } else if (task.isRead && task.isCompleted) {
+                cardColor = Colors.green[100]; // Đã đọc + Đã hoàn thành: Màu xanh nhạt
+              }
+
               return Card(
                 margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                color: task.isCompleted ? Colors.green[100] : Colors.red[100], // Màu nền dựa trên trạng thái
+                color: cardColor ?? Colors.white, // Mặc định trắng nếu không khớp
                 child: ListTile(
-                  title: Text(task.title, style: TextStyle(fontWeight: FontWeight.bold)),
+                  title: Text(
+                    task.title,
+                    style: TextStyle(
+                      fontWeight: task.isRead ? FontWeight.normal : FontWeight.bold, // Bôi đậm nếu chưa đọc
+                      color: Colors.black,
+                    ),
+                  ),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -133,6 +177,7 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> {
                     ],
                   ),
                   onTap: () {
+                    _markAsRead(task.id); // Đánh dấu đã đọc khi nhấn
                     Navigator.push(
                       context,
                       MaterialPageRoute(

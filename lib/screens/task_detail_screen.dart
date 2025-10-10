@@ -25,6 +25,24 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     super.initState();
     _currentTask = widget.task; // Gán giá trị ban đầu
     _loadReports();
+    _markAsRead(); // Đánh dấu đã đọc khi vào chi tiết
+  }
+
+  Future<void> _markAsRead() async {
+    if (!_currentTask.isRead) {
+      try {
+        await _firestore.collection('tasks').doc(_currentTask.id).update({
+          'isRead': true,
+        });
+        setState(() {
+          _currentTask.isRead = true; // Gán lại giá trị vì isRead không còn final
+        });
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi đánh dấu đã đọc: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _loadReports() async {

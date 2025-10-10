@@ -15,7 +15,8 @@ dependencies:
   uuid: ^4.5.0
   firebase_auth_web: ^6.0.3  # Đảm bảo hỗ trợ web nếu cần
   firebase_auth_platform_interface: ^8.1.2  # Tùy chọn, để đảm bảo tương thích
-  intl: ^0.20.2
+  intl: ^0.18.1  # Giảm xuống phiên bản này
+  syncfusion_flutter_charts: ^31.1.23
 
 flutter:
   uses-material-design: true
