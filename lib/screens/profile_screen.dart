@@ -35,7 +35,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (user != null) {
           setState(() {
             _username = user.username;
-            _fullName = user.fullName ?? ''; // Sử dụng fullName từ User model
+            _fullName = user.fullName ?? '';
             _phoneNumber = user.phoneNumber;
             _phoneController.text = _phoneNumber ?? '';
             _isLoading = false;
@@ -80,16 +80,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: Text('Đổi mật khẩu'),
+          title: Row(
+            children: [
+              Icon(Icons.lock),
+              SizedBox(width: 8),
+              Text('Đổi mật khẩu'),
+            ],
+          ),
           content: TextField(
             controller: newPasswordController,
-            decoration: InputDecoration(labelText: 'Mật khẩu mới'),
+            decoration: InputDecoration(
+              labelText: 'Mật khẩu mới',
+              prefixIcon: Icon(Icons.vpn_key),
+            ),
             obscureText: true,
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('Hủy'),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.cancel),
+                  SizedBox(width: 4),
+                  Text('Hủy'),
+                ],
+              ),
             ),
             TextButton(
               onPressed: () async {
@@ -101,7 +117,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ErrorHandler.getErrorMessage(e))));
                 }
               },
-              child: Text('Xác nhận'),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.check),
+                  SizedBox(width: 4),
+                  Text('Xác nhận'),
+                ],
+              ),
             ),
           ],
         ),
@@ -125,26 +148,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Icon(Icons.person, size: 50),
             Text('Vai trò: $_currentRole', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             SizedBox(height: 20),
-            Text('Tên đăng nhập: $_username', style: TextStyle(fontSize: 16)), // Chỉ đọc
+            Text('Tên đăng nhập: $_username', style: TextStyle(fontSize: 16)),
             SizedBox(height: 10),
-            Text('Họ và tên: $_fullName', style: TextStyle(fontSize: 16)), // Chỉ đọc
+            Text('Họ và tên: $_fullName', style: TextStyle(fontSize: 16)),
             SizedBox(height: 10),
             TextField(
               controller: _phoneController,
-              decoration: InputDecoration(labelText: 'Số điện thoại'),
+              decoration: InputDecoration(
+                labelText: 'Số điện thoại',
+                prefixIcon: Icon(Icons.phone),
+              ),
               keyboardType: TextInputType.phone,
             ),
             SizedBox(height: 20),
             ElevatedButton.icon(
               onPressed: _updateProfile,
-              icon: Icon(Icons.save, color: Colors.black),
+              icon: Icon(Icons.save),
               label: Text('Cập nhật Profile'),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
             ),
             SizedBox(height: 10),
             ElevatedButton.icon(
               onPressed: _changePassword,
-              icon: Icon(Icons.lock, color: Colors.black),
+              icon: Icon(Icons.lock),
               label: Text('Đổi mật khẩu'),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
             ),
           ],
         ),

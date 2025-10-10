@@ -31,14 +31,13 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
       _currentRole = prefs.getString('role') ?? 'Employee';
       final userDetails = await _apiService.layDanhSachNguoiDung();
 
-      // Lọc danh sách người dùng dựa trên vai trò
       final filteredUsers = <Map<String, String>>[];
       for (var user in userDetails) {
         final userRole = await _apiService.layVaiTroCuaNguoiDung(user['username']!);
         if (_currentRole == 'Admin' && userRole != 'Admin') {
-          filteredUsers.add(user); // Admin thấy Manager và Employee
+          filteredUsers.add(user);
         } else if (_currentRole == 'Manager' && userRole == 'Employee') {
-          filteredUsers.add(user); // Manager chỉ thấy Employee
+          filteredUsers.add(user);
         }
       }
 
@@ -96,23 +95,35 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Thêm Nhiệm Vụ')),
+      appBar: AppBar(
+        title: Text('Thêm Nhiệm Vụ'),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
       body: Padding(
         padding: EdgeInsets.all(16.0),
         child: Column(
           children: [
             TextField(
               controller: _titleController,
-              decoration: InputDecoration(labelText: 'Tiêu đề'),
+              decoration: InputDecoration(
+                labelText: 'Tiêu đề',
+                prefixIcon: Icon(Icons.title),
+              ),
             ),
             TextField(
               controller: _descriptionController,
-              decoration: InputDecoration(labelText: 'Mô tả'),
+              decoration: InputDecoration(
+                labelText: 'Mô tả',
+                prefixIcon: Icon(Icons.description),
+              ),
               maxLines: 3,
             ),
             ListTile(
               title: Text('Ngày đến hạn: ${DateFormatter.formatDate(_dueDate)}'),
-              trailing: Icon(Icons.calendar_today, color: Colors.black),
+              trailing: Icon(Icons.calendar_today),
               onTap: _selectDueDate,
             ),
             if (_isLoadingUsers)
@@ -136,8 +147,9 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
             SizedBox(height: 20),
             ElevatedButton.icon(
               onPressed: _themNhiemVu,
-              icon: Icon(Icons.add, color: Colors.black),
+              icon: Icon(Icons.add),
               label: Text('Thêm Nhiệm Vụ'),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
             ),
           ],
         ),

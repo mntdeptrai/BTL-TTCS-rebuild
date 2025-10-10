@@ -5,7 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../models/task.dart';
-import 'add_task_screen.dart'; // Đảm bảo import file này
+import 'add_task_screen.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
 import '../utils/date_formatter.dart';
@@ -31,7 +31,6 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> {
     try {
       final apiService = ApiService();
       final tasks = await apiService.layNhiemVu();
-      // Lấy employeeId cho mỗi task
       for (var task in tasks) {
         final userDoc = await _firestore
             .collection('users')
@@ -46,12 +45,12 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> {
         _tasks = tasks;
         _isLoading = false;
       });
-      print('Đã tải ${tasks.length} công việc');
+      print('Đã tải ${tasks.length} nhiệm vụ');
     } catch (e) {
       setState(() {
         _isLoading = false;
       });
-      print('Lỗi tải công việc: $e');
+      print('Lỗi tải nhiệm vụ: $e');
     }
   }
 
@@ -81,21 +80,21 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> {
         print('Vai trò hiện tại: $role');
         return Scaffold(
           appBar: AppBar(
-            title: Text('Danh Sách Công Việc'),
+            title: Text('Danh Sách Nhiệm Vụ'),
             actions: [
               if (role == 'Admin' || role == 'Manager')
                 IconButton(
-                  icon: Icon(Icons.add, color: Colors.black),
-                  tooltip: 'Thêm công việc',
+                  icon: Icon(Icons.add),
+                  tooltip: 'Thêm nhiệm vụ',
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => ManHinhThemNhiemVu()), // Sử dụng constructor
+                      MaterialPageRoute(builder: (context) => ManHinhThemNhiemVu()),
                     ).then((_) => _layDanhSachNhiemVu());
                   },
                 ),
               IconButton(
-                icon: Icon(Icons.person, color: Colors.black),
+                icon: Icon(Icons.person),
                 tooltip: 'Profile',
                 onPressed: () {
                   Navigator.push(
@@ -105,7 +104,7 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> {
                 },
               ),
               IconButton(
-                icon: Icon(Icons.logout, color: Colors.black),
+                icon: Icon(Icons.logout),
                 tooltip: 'Đăng xuất',
                 onPressed: _dangXuat,
               ),
@@ -114,7 +113,7 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> {
           body: _isLoading
               ? Center(child: CircularProgressIndicator())
               : _tasks.isEmpty
-              ? Center(child: Text('Chưa có công việc nào được giao'))
+              ? Center(child: Text('Chưa có nhiệm vụ nào được giao'))
               : ListView.builder(
             itemCount: _tasks.length,
             itemBuilder: (context, index) {
@@ -131,10 +130,12 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> {
                       Text('Giao cho: ${task.assignedTo} (ID: ${task.employeeId ?? 'N/A'})'),
                     ],
                   ),
-                  trailing: Checkbox(
-                    value: task.isCompleted,
-                    onChanged: (value) =>
-                        _chuyenTrangThaiNhiemVu(task.id, task.isCompleted),
+                  trailing: IconButton(
+                    icon: Icon(
+                      task.isCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
+                      color: task.isCompleted ? Colors.green : Colors.black,
+                    ),
+                    onPressed: () => _chuyenTrangThaiNhiemVu(task.id, task.isCompleted),
                   ),
                 ),
               );
