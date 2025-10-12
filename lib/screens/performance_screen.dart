@@ -49,7 +49,7 @@ class _PerformanceScreenState extends State<PerformanceScreen> {
         _isLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi tải nhiệm vụ: $e')),
+        SnackBar(content: Text('Lỗi tải công việc: $e')),
       );
     }
   }
@@ -93,7 +93,7 @@ class _PerformanceScreenState extends State<PerformanceScreen> {
                 children: [
                   Text(
                     'Nhân viên: $user',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
                   SizedBox(height: 10),
                   Text('Tổng nhiệm vụ: ${stats['total']}'),
