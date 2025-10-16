@@ -31,7 +31,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (_userId != null) {
       try {
         final user = await _authService.layThongTinNguoiDung(_userId!);
-        print('Đã tải profile: $user');
         if (user != null) {
           setState(() {
             _username = user.username;
@@ -46,8 +45,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           });
         }
       } catch (e) {
-        print('Lỗi tải profile: $e');
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ErrorHandler.getErrorMessage(e))));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(ErrorHandler.getErrorMessage(e))),
+        );
         setState(() {
           _isLoading = false;
         });
@@ -58,121 +58,214 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _updateProfile() async {
     if (_userId != null && _phoneController.text.isNotEmpty) {
       try {
-        await _authService.capNhatProfile(_userId!, _username!, _phoneController.text);
+        await _authService.capNhatProfile(
+            _userId!, _username!, _phoneController.text);
         setState(() {
           _phoneNumber = _phoneController.text;
         });
-        print('Đã cập nhật profile');
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Cập nhật profile thành công')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Cập nhật profile thành công')),
+        );
       } catch (e) {
-        print('Lỗi cập nhật profile: $e');
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ErrorHandler.getErrorMessage(e))));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(ErrorHandler.getErrorMessage(e))),
+        );
       }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Vui lòng nhập số điện thoại')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Vui lòng nhập số điện thoại')),
+      );
     }
   }
 
   Future<void> _changePassword() async {
     final currentUser = _authService.layNguoiDungHienTai();
     if (currentUser != null) {
+      final oldPasswordController = TextEditingController();
       final newPasswordController = TextEditingController();
+      final confirmPasswordController = TextEditingController();
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: Row(
+          title: Text('Đổi mật khẩu'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.lock),
-              SizedBox(width: 8),
-              Text('Đổi mật khẩu'),
+              TextField(
+                controller: oldPasswordController,
+                decoration: InputDecoration(
+                  labelText: 'Mật khẩu cũ',
+                  prefixIcon: Icon(Icons.lock_outline),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                obscureText: true,
+              ),
+              SizedBox(height: 12),
+              TextField(
+                controller: newPasswordController,
+                decoration: InputDecoration(
+                  labelText: 'Mật khẩu mới',
+                  prefixIcon: Icon(Icons.vpn_key),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                obscureText: true,
+              ),
+              SizedBox(height: 12),
+              TextField(
+                controller: confirmPasswordController,
+                decoration: InputDecoration(
+                  labelText: 'Xác nhận mật khẩu mới',
+                  prefixIcon: Icon(Icons.vpn_key),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                obscureText: true,
+              ),
             ],
-          ),
-          content: TextField(
-            controller: newPasswordController,
-            decoration: InputDecoration(
-              labelText: 'Mật khẩu mới',
-              prefixIcon: Icon(Icons.vpn_key),
-            ),
-            obscureText: true,
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.cancel),
-                  SizedBox(width: 4),
-                  Text('Hủy'),
-                ],
-              ),
+              child: Text('Hủy'),
             ),
             TextButton(
               onPressed: () async {
-                try {
-                  await _authService.doiMatKhau(currentUser.email!, newPasswordController.text);
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Đổi mật khẩu thành công')));
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ErrorHandler.getErrorMessage(e))));
+                if (newPasswordController.text == confirmPasswordController.text) {
+                  try {
+                    await _authService.doiMatKhau(
+                        currentUser.email!, newPasswordController.text);
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Đổi mật khẩu thành công')),
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(ErrorHandler.getErrorMessage(e))),
+                    );
+                  }
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Mật khẩu mới không khớp')),
+                  );
                 }
               },
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.check),
-                  SizedBox(width: 4),
-                  Text('Xác nhận'),
-                ],
-              ),
+              child: Text('Xác nhận'),
             ),
           ],
         ),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Không tìm thấy người dùng hiện tại')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Không tìm thấy người dùng hiện tại')),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Profile')),
+      appBar: AppBar(
+        title: Text('Hồ Sơ'),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blue.shade700, Colors.blue.shade300],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+      ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator())
           : Padding(
         padding: EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.person, size: 50),
-            Text('Vai trò: $_currentRole', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            SizedBox(height: 20),
-            Text('Tên đăng nhập: $_username', style: TextStyle(fontSize: 16)),
-            SizedBox(height: 10),
-            Text('Họ và tên: $_fullName', style: TextStyle(fontSize: 16)),
-            SizedBox(height: 10),
+            Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    CircleAvatar(
+                      radius: 40,
+                      backgroundColor: Colors.blue.shade200,
+                      child: Text(
+                        _fullName != null && _fullName!.isNotEmpty
+                            ? _fullName![0]
+                            : '?',
+                        style: TextStyle(fontSize: 30, color: Colors.white),
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      _fullName ?? 'Không có tên',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue.shade900,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Tên đăng nhập: $_username',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Vai trò: $_currentRole',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(height: 16),
             TextField(
               controller: _phoneController,
               decoration: InputDecoration(
                 labelText: 'Số điện thoại',
                 prefixIcon: Icon(Icons.phone),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               keyboardType: TextInputType.phone,
             ),
-            SizedBox(height: 20),
+            SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: _updateProfile,
               icon: Icon(Icons.save),
               label: Text('Cập nhật Profile'),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue.shade700,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
             ),
-            SizedBox(height: 10),
+            SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: _changePassword,
               icon: Icon(Icons.lock),
               label: Text('Đổi mật khẩu'),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue.shade700,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
             ),
           ],
         ),

@@ -11,6 +11,7 @@ class ManHinhThemNhiemVu extends StatefulWidget {
 
 class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
   final _apiService = ApiService();
+  final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   DateTime _dueDate = DateTime.now();
@@ -30,7 +31,6 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
       final prefs = await SharedPreferences.getInstance();
       _currentRole = prefs.getString('role') ?? 'Employee';
       final userDetails = await _apiService.layDanhSachNguoiDung();
-
       final filteredUsers = <Map<String, String>>[];
       for (var user in userDetails) {
         final userRole = await _apiService.layVaiTroCuaNguoiDung(user['username']!);
@@ -40,18 +40,18 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
           filteredUsers.add(user);
         }
       }
-
-      print('Đã tải ${filteredUsers.length} người dùng phù hợp');
       setState(() {
         _users = filteredUsers;
         _isLoadingUsers = false;
         if (_users.isNotEmpty) _selectedAssignee = _users.first['username']!;
       });
     } catch (e) {
-      print('Lỗi tải người dùng: $e');
       setState(() {
         _isLoadingUsers = false;
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lỗi tải người dùng: $e')),
+      );
     }
   }
 
@@ -61,6 +61,20 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
       initialDate: _dueDate,
       firstDate: DateTime.now(),
       lastDate: DateTime(2100),
+      builder: (context, child) {
+        return Theme(
+          data: ThemeData.light().copyWith(
+            colorScheme: ColorScheme.light(
+              primary: Colors.blue.shade700,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Colors.black87,
+            ),
+            dialogBackgroundColor: Colors.white,
+          ),
+          child: child!,
+        );
+      },
     );
     if (picked != null && picked != _dueDate) {
       setState(() {
@@ -70,7 +84,7 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
   }
 
   Future<void> _themNhiemVu() async {
-    if (_titleController.text.isNotEmpty && _selectedAssignee.isNotEmpty) {
+    if (_formKey.currentState!.validate()) {
       try {
         await _apiService.themNhiemVu(
           _titleController.text,
@@ -78,17 +92,15 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
           _dueDate,
           _selectedAssignee,
         );
-        print('Đã thêm nhiệm vụ cho: $_selectedAssignee');
         Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Thêm nhiệm vụ thành công')),
+        );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
+          SnackBar(content: Text('Lỗi thêm nhiệm vụ: $e')),
         );
       }
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Vui lòng nhập tiêu đề và chọn nhân viên')),
-      );
     }
   }
 
@@ -97,61 +109,110 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Thêm Nhiệm Vụ'),
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blue.shade700, Colors.blue.shade300],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
         ),
       ),
       body: Padding(
         padding: EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextField(
-              controller: _titleController,
-              decoration: InputDecoration(
-                labelText: 'Tiêu đề',
-                prefixIcon: Icon(Icons.title),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              TextFormField(
+                controller: _titleController,
+                decoration: InputDecoration(
+                  labelText: 'Tiêu đề',
+                  prefixIcon: Icon(Icons.title),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                validator: (value) =>
+                value!.isEmpty ? 'Vui lòng nhập tiêu đề' : null,
               ),
-            ),
-            TextField(
-              controller: _descriptionController,
-              decoration: InputDecoration(
-                labelText: 'Mô tả',
-                prefixIcon: Icon(Icons.description),
+              SizedBox(height: 16),
+              TextFormField(
+                controller: _descriptionController,
+                decoration: InputDecoration(
+                  labelText: 'Mô tả',
+                  prefixIcon: Icon(Icons.description),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                maxLines: 3,
               ),
-              maxLines: 3,
-            ),
-            ListTile(
-              title: Text('Ngày đến hạn: ${DateFormatter.formatDate(_dueDate)}'),
-              trailing: Icon(Icons.calendar_today),
-              onTap: _selectDueDate,
-            ),
-            if (_isLoadingUsers)
-              CircularProgressIndicator()
-            else
-              DropdownButton<String>(
-                hint: Text('Chọn nhân viên'),
+              SizedBox(height: 16),
+              ListTile(
+                title: Text(
+                  'Ngày đến hạn: ${DateFormatter.formatDate(_dueDate)}',
+                  style: TextStyle(fontSize: 16),
+                ),
+                trailing: Icon(Icons.calendar_today, color: Colors.blue),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: Colors.grey.shade300),
+                ),
+                onTap: _selectDueDate,
+              ),
+              SizedBox(height: 16),
+              _isLoadingUsers
+                  ? Center(child: CircularProgressIndicator())
+                  : DropdownButtonFormField<String>(
+                decoration: InputDecoration(
+                  labelText: 'Chọn nhân viên',
+                  prefixIcon: Icon(Icons.person),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
                 value: _selectedAssignee.isNotEmpty ? _selectedAssignee : null,
-                items: _users.map((Map<String, String> user) {
+                items: _users.map((user) {
                   return DropdownMenuItem<String>(
                     value: user['username'],
-                    child: Text('${user['fullName']} (ID: ${user['employeeId']})'),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          child: Text(user['fullName']![0]),
+                          backgroundColor: Colors.blue.shade200,
+                        ),
+                        SizedBox(width: 8),
+                        Text('${user['fullName']} (ID: ${user['employeeId']})'),
+                      ],
+                    ),
                   );
                 }).toList(),
-                onChanged: (String? newValue) {
+                onChanged: (value) {
                   setState(() {
-                    _selectedAssignee = newValue ?? '';
+                    _selectedAssignee = value ?? '';
                   });
                 },
+                validator: (value) =>
+                value == null ? 'Vui lòng chọn nhân viên' : null,
               ),
-            SizedBox(height: 20),
-            ElevatedButton.icon(
-              onPressed: _themNhiemVu,
-              icon: Icon(Icons.add),
-              label: Text('Thêm Nhiệm Vụ'),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-            ),
-          ],
+              SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: _themNhiemVu,
+                icon: Icon(Icons.add),
+                label: Text('Thêm Nhiệm Vụ'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue.shade700,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

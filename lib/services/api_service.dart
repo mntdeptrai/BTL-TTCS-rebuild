@@ -19,6 +19,7 @@ class ApiService {
     final snapshot = await query.get();
     return snapshot.docs.map((doc) {
       final data = doc.data() as Map<String, dynamic>;
+      // Truyền userId từ Firestore hoặc dùng userId từ SharedPreferences nếu cần
       return Task.fromJson(data, doc.id);
     }).toList();
   }
@@ -69,7 +70,7 @@ class ApiService {
       'description': description,
       'dueDate': dueDate,
       'isCompleted': false,
-      'userId': userId,
+      'userId': userId, // Đảm bảo userId được lưu
       'assignedTo': assignedTo,
     });
     print('Đã thêm nhiệm vụ cho: $assignedTo bởi $currentUsername');
@@ -79,7 +80,6 @@ class ApiService {
     await _firestore.collection('tasks').doc(taskId).update({'isCompleted': isCompleted});
   }
 
-  // Lấy danh sách người dùng với họ tên và ID
   Future<List<Map<String, String>>> layDanhSachNguoiDung() async {
     final snapshot = await _firestore.collection('users').get();
     return snapshot.docs.map((doc) {
@@ -92,7 +92,6 @@ class ApiService {
     }).toList();
   }
 
-  // Lấy vai trò của người dùng dựa trên username
   Future<String?> layVaiTroCuaNguoiDung(String username) async {
     final snapshot = await _firestore
         .collection('users')

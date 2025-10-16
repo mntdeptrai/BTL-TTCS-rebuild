@@ -10,6 +10,7 @@ class Task {
   final String assignedTo;
   String? employeeId; // Thêm tạm để lưu khi lấy từ Firestore
   bool isRead; // Bỏ final để cho phép gán lại
+  String? createdBy;
 
   Task({
     required this.id,
@@ -21,6 +22,7 @@ class Task {
     required this.assignedTo,
     this.employeeId,
     this.isRead = false, // Mặc định là chưa đọc
+    this.createdBy
   });
 
   factory Task.fromJson(Map<String, dynamic> json, String id) {
@@ -34,6 +36,7 @@ class Task {
       assignedTo: json['assignedTo'] ?? '',
       employeeId: json['employeeId'] as String?,
       isRead: json['isRead'] ?? false, // Lấy từ Firestore, mặc định là false
+      createdBy: json['createdBy']
     );
   }
 
@@ -47,6 +50,7 @@ class Task {
       'userId': userId,
       'assignedTo': assignedTo,
       'isRead': isRead, // Thêm vào JSON để lưu
+      'createdBy':createdBy
     };
   }
 
@@ -61,6 +65,7 @@ class Task {
     String? assignedTo,
     String? employeeId,
     bool? isRead,
+    String? createdBy
   }) {
     return Task(
       id: id ?? this.id,
@@ -72,6 +77,7 @@ class Task {
       assignedTo: assignedTo ?? this.assignedTo,
       employeeId: employeeId ?? this.employeeId,
       isRead: isRead ?? this.isRead,
+      createdBy: createdBy ?? this.createdBy
     );
   }
 }
