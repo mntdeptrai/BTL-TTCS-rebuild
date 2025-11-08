@@ -5,7 +5,6 @@ import '../utils/date_formatter.dart';
 
 class TaskDetailScreen extends StatefulWidget {
   final Task task;
-
   const TaskDetailScreen({required this.task});
 
   @override
@@ -30,12 +29,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   Future<void> _markAsRead() async {
     if (!_currentTask.isRead) {
       try {
-        await _firestore.collection('tasks').doc(_currentTask.id).update({
-          'isRead': true,
-        });
-        setState(() {
-          _currentTask.isRead = true;
-        });
+        await _firestore.collection('tasks').doc(_currentTask.id).update({'isRead': true});
+        setState(() => _currentTask.isRead = true);
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Lỗi đánh dấu đã đọc: $e')),
@@ -45,9 +40,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   }
 
   Future<void> _loadReports() async {
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
     try {
       final snapshot = await _firestore
           .collection('tasks')
@@ -65,9 +58,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Lỗi tải báo cáo: $e')),
       );
@@ -76,15 +67,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
   Future<void> _addReport() async {
     if (_reportController.text.isNotEmpty) {
-      setState(() {
-        _isLoading = true;
-      });
+      setState(() => _isLoading = true);
       try {
-        await _firestore
-            .collection('tasks')
-            .doc(_currentTask.id)
-            .collection('reports')
-            .add({
+        await _firestore.collection('tasks').doc(_currentTask.id).collection('reports').add({
           'report': _reportController.text,
           'timestamp': FieldValue.serverTimestamp(),
         });
@@ -95,9 +80,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           SnackBar(content: Text('Lỗi thêm báo cáo: $e')),
         );
       } finally {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -107,33 +90,31 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   }
 
   Future<void> _updateTaskStatus(bool isCompleted) async {
+    // Không cho thay đổi nếu quá hạn
+    if (_currentTask.isOverdue) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Nhiệm vụ đã quá hạn, không thể thay đổi trạng thái!')),
+      );
+      return;
+    }
+
     bool? confirm = await showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Xác nhận'),
         content: Text('Bạn có chắc muốn cập nhật trạng thái nhiệm vụ?'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Hủy'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text('Xác nhận'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Hủy')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: Text('Xác nhận')),
         ],
       ),
     );
+
     if (confirm == true) {
-      setState(() {
-        _isLoading = true;
-      });
+      setState(() => _isLoading = true);
       try {
-        await _firestore.collection('tasks').doc(_currentTask.id).update({
-          'isCompleted': isCompleted,
-        });
-        final updatedDoc =
-        await _firestore.collection('tasks').doc(_currentTask.id).get();
+        await _firestore.collection('tasks').doc(_currentTask.id).update({'isCompleted': isCompleted});
+        final updatedDoc = await _firestore.collection('tasks').doc(_currentTask.id).get();
         if (updatedDoc.exists) {
           setState(() {
             _currentTask = Task.fromJson(updatedDoc.data()!, _currentTask.id);
@@ -147,9 +128,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           SnackBar(content: Text('Lỗi cập nhật trạng thái: $e')),
         );
       } finally {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -176,9 +155,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           children: [
             Card(
               elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               child: Padding(
                 padding: EdgeInsets.all(16.0),
                 child: Column(
@@ -186,31 +163,18 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                   children: [
                     Text(
                       _currentTask.title,
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue.shade900,
-                      ),
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
                     ),
                     SizedBox(height: 8),
-                    Text(
-                      'Mô tả: ${_currentTask.description ?? 'Không có mô tả'}',
-                      style: TextStyle(fontSize: 16),
-                    ),
+                    Text('Mô tả: ${_currentTask.description ?? 'Không có mô tả'}', style: TextStyle(fontSize: 16)),
                     SizedBox(height: 8),
-                    Text(
-                      'Đến hạn: ${DateFormatter.formatDate(_currentTask.dueDate)}',
-                      style: TextStyle(fontSize: 16),
-                    ),
+                    Text('Đến hạn: ${DateFormatter.formatDate(_currentTask.dueDate)}', style: TextStyle(fontSize: 16)),
                     SizedBox(height: 8),
                     Row(
                       children: [
                         Icon(
-                          _currentTask.isCompleted
-                              ? Icons.check_circle
-                              : Icons.pending,
-                          color:
-                          _currentTask.isCompleted ? Colors.green : Colors.red,
+                          _currentTask.isCompleted ? Icons.check_circle : Icons.pending,
+                          color: _currentTask.isCompleted ? Colors.green : Colors.red,
                         ),
                         SizedBox(width: 8),
                         Text(
@@ -220,61 +184,67 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                       ],
                     ),
                     SizedBox(height: 8),
-                    Text(
-                      'Giao cho: ${_currentTask.assignedTo} (ID: ${_currentTask.employeeId ?? 'N/A'})',
-                      style: TextStyle(fontSize: 16),
-                    ),
+                    Text('Giao cho: ${_currentTask.assignedTo} (ID: ${_currentTask.employeeId ?? 'N/A'})', style: TextStyle(fontSize: 16)),
                   ],
                 ),
               ),
             ),
+
+            // Cảnh báo quá hạn
+            if (_currentTask.isOverdue && !_currentTask.isCompleted)
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.red.shade400),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded, color: Colors.red.shade700),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Nhiệm vụ đã quá hạn và được đánh dấu là "Chưa hoàn thành"',
+                          style: TextStyle(color: Colors.red.shade700, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
             SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 ElevatedButton.icon(
-                  onPressed: _currentTask.isCompleted
-                      ? null
-                      : () => _updateTaskStatus(true),
+                  onPressed: (_currentTask.isCompleted || !_currentTask.canChangeStatus) ? null : () => _updateTaskStatus(true),
                   icon: Icon(Icons.check),
                   label: Text('Đã hoàn thành'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _currentTask.isCompleted
-                        ? Colors.grey
-                        : Colors.green.shade700,
+                    backgroundColor: (_currentTask.isCompleted || !_currentTask.canChangeStatus) ? Colors.grey : Colors.green.shade700,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
                 ElevatedButton.icon(
-                  onPressed: _currentTask.isCompleted
-                      ? () => _updateTaskStatus(false)
-                      : null,
+                  onPressed: (!_currentTask.isCompleted || !_currentTask.canChangeStatus) ? null : () => _updateTaskStatus(false),
                   icon: Icon(Icons.cancel),
                   label: Text('Chưa hoàn thành'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: !_currentTask.isCompleted
-                        ? Colors.grey
-                        : Colors.red.shade700,
+                    backgroundColor: (!_currentTask.isCompleted || !_currentTask.canChangeStatus) ? Colors.grey : Colors.red.shade700,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
               ],
             ),
             SizedBox(height: 16),
-            Text(
-              'Báo cáo công việc',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.blue.shade900,
-              ),
-            ),
+            Text('Báo cáo công việc', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue.shade900)),
             Expanded(
               child: _isLoading
                   ? Center(child: CircularProgressIndicator())
@@ -286,9 +256,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                   final report = _reports[index];
                   return Card(
                     margin: EdgeInsets.symmetric(vertical: 4),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     child: ListTile(
                       title: Text(report['report']),
                       subtitle: Text(
@@ -305,9 +273,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               controller: _reportController,
               decoration: InputDecoration(
                 labelText: 'Nhập báo cáo',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
               maxLines: 3,
             ),
@@ -319,9 +285,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue.shade700,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
           ],

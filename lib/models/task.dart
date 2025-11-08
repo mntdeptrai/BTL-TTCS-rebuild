@@ -5,11 +5,11 @@ class Task {
   final String title;
   final String? description;
   final DateTime dueDate;
-  final bool isCompleted;
+  bool isCompleted; // Bỏ final để có thể thay đổi
   final String userId;
   final String assignedTo;
-  String? employeeId; // Thêm tạm để lưu khi lấy từ Firestore
-  bool isRead; // Bỏ final để cho phép gán lại
+  String? employeeId;
+  bool isRead;
   String? createdBy;
 
   Task({
@@ -21,9 +21,15 @@ class Task {
     required this.userId,
     required this.assignedTo,
     this.employeeId,
-    this.isRead = false, // Mặc định là chưa đọc
-    this.createdBy
+    this.isRead = false,
+    this.createdBy,
   });
+
+  // Kiểm tra nhiệm vụ có quá hạn không
+  bool get isOverdue => DateTime.now().isAfter(dueDate);
+
+  // Có thể thay đổi trạng thái không (chỉ khi chưa quá hạn)
+  bool get canChangeStatus => !isOverdue;
 
   factory Task.fromJson(Map<String, dynamic> json, String id) {
     return Task(
@@ -35,8 +41,8 @@ class Task {
       userId: json['userId'] ?? '',
       assignedTo: json['assignedTo'] ?? '',
       employeeId: json['employeeId'] as String?,
-      isRead: json['isRead'] ?? false, // Lấy từ Firestore, mặc định là false
-      createdBy: json['createdBy']
+      isRead: json['isRead'] ?? false,
+      createdBy: json['createdBy'],
     );
   }
 
@@ -49,12 +55,11 @@ class Task {
       'isCompleted': isCompleted,
       'userId': userId,
       'assignedTo': assignedTo,
-      'isRead': isRead, // Thêm vào JSON để lưu
-      'createdBy':createdBy
+      'isRead': isRead,
+      'createdBy': createdBy,
     };
   }
 
-  // Thêm phương thức copyWith (tùy chọn, giữ lại để tương lai)
   Task copyWith({
     String? id,
     String? title,
@@ -65,7 +70,7 @@ class Task {
     String? assignedTo,
     String? employeeId,
     bool? isRead,
-    String? createdBy
+    String? createdBy,
   }) {
     return Task(
       id: id ?? this.id,
@@ -77,7 +82,7 @@ class Task {
       assignedTo: assignedTo ?? this.assignedTo,
       employeeId: employeeId ?? this.employeeId,
       isRead: isRead ?? this.isRead,
-      createdBy: createdBy ?? this.createdBy
+      createdBy: createdBy ?? this.createdBy,
     );
   }
 }

@@ -17,19 +17,20 @@ class ManHinhDanhSachNhiemVu extends StatefulWidget {
   _ManHinhDanhSachNhiemVuState createState() => _ManHinhDanhSachNhiemVuState();
 }
 
-class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> with TickerProviderStateMixin {
+class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu>
+    with TickerProviderStateMixin {
   List<Task> _tasks = [];
   List<Task> _filteredTasks = [];
   bool _isLoading = true;
   final _authService = AuthService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final _searchController = TextEditingController();
-  String _filterStatus = 'all'; // all, completed, pending
+  String _filterStatus = 'all';
   late AnimationController _animationController;
-  late List<Animation<Offset>> _slideAnimations;
+  List<Animation<Offset>> _slideAnimations = []; // Khởi tạo rỗng
   Timer? _debounceTimer;
-  String? _currentUsername; // Lưu username hiện tại
-  String? _currentRole; // Lưu vai trò hiện tại
+  String? _currentUsername;
+  String? _currentRole;
 
   @override
   void initState() {
@@ -39,7 +40,7 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> with Ti
       duration: Duration(milliseconds: 600),
     );
     _searchController.addListener(_onSearchChanged);
-    _loadUserData(); // Lấy vai trò và username
+    _loadUserData();
   }
 
   @override
@@ -56,68 +57,80 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> with Ti
       _currentUsername = prefs.getString('username');
       _currentRole = prefs.getString('role') ?? 'Employee';
     });
-    _layDanhSachNhiemVu();
+    await _refreshTasks();
+  }
+
+  // Pull to Refresh
+  Future<void> _refreshTasks() async {
+    await _layDanhSachNhiemVu();
   }
 
   Future<void> _layDanhSachNhiemVu() async {
     if (_currentRole == null || _currentUsername == null) return;
-    setState(() {
-      _isLoading = true;
-    });
+
+    setState(() => _isLoading = true);
+
     try {
       final apiService = ApiService();
       final tasks = await apiService.layNhiemVu();
+
+      // Tự động đánh dấu "Chưa hoàn thành" nếu quá hạn
       for (var task in tasks) {
+        if (task.isOverdue && !task.isCompleted) {
+          await _firestore
+              .collection('tasks')
+              .doc(task.id)
+              .update({'isCompleted': false});
+          task.isCompleted = false;
+        }
+
         final userDoc = await _firestore
             .collection('users')
             .where('username', isEqualTo: task.assignedTo)
             .limit(1)
             .get();
+
         if (userDoc.docs.isNotEmpty) {
-          task.employeeId = userDoc.docs.first.data()['employeeId']?.toString() ?? 'N/A';
+          task.employeeId =
+              userDoc.docs.first.data()['employeeId']?.toString() ?? 'N/A';
         }
       }
-      // Lọc nhiệm vụ dựa trên vai trò
+
       List<Task> filteredTasks = [];
       if (_currentRole == 'Manager') {
-        filteredTasks = tasks.where((task) =>
-        task.assignedTo == _currentUsername || (task.createdBy != null && task.createdBy == _currentUsername)
-        ).toList();
+        filteredTasks = tasks
+            .where((t) =>
+        t.assignedTo == _currentUsername ||
+            t.createdBy == _currentUsername)
+            .toList();
       } else if (_currentRole == 'Admin') {
-        filteredTasks = tasks; // Admin thấy tất cả
+        filteredTasks = tasks;
       } else {
-        filteredTasks = tasks.where((task) => task.assignedTo == _currentUsername).toList(); // Employee chỉ thấy nhiệm vụ của mình
+        filteredTasks =
+            tasks.where((t) => t.assignedTo == _currentUsername).toList();
       }
+
       setState(() {
         _tasks = filteredTasks;
         _isLoading = false;
       });
-      // Tạo animations cho từng task
-      _slideAnimations = List.generate(
-        _tasks.length,
-            (index) => Tween<Offset>(
-          begin: const Offset(-1.0, 0.0),
-          end: Offset.zero,
-        ).animate(CurvedAnimation(
-          parent: _animationController,
-          curve: Interval(index * 0.1, 1.0, curve: Curves.easeOut),
-        )),
-      );
-      _animationController.forward(from: 0.0);
+
       _filterTasks();
+      _updateAnimations();
+      _animationController.forward(from: 0.0);
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi tải nhiệm vụ: $e')),
-      );
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi tải nhiệm vụ: $e')),
+        );
+      }
     }
   }
 
   void _onSearchChanged() {
-    if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
-    _debounceTimer = Timer(Duration(seconds: 2), () {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(Duration(seconds: 1), () {
       _filterTasks();
       _updateAnimations();
       _animationController.forward(from: 0.0);
@@ -140,23 +153,23 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> with Ti
   void _updateAnimations() {
     _slideAnimations = List.generate(
       _filteredTasks.length,
-          (index) => Tween<Offset>(
-        begin: const Offset(-1.0, 0.0),
-        end: Offset.zero,
-      ).animate(CurvedAnimation(
-        parent: _animationController,
-        curve: Interval(index * 0.1, 1.0, curve: Curves.easeOut),
-      )),
+          (i) => Tween<Offset>(begin: Offset(-1, 0), end: Offset.zero).animate(
+        CurvedAnimation(
+          parent: _animationController,
+          curve: Interval(i * 0.1, 1.0, curve: Curves.easeOut),
+        ),
+      ),
     );
   }
 
   Future<void> _markAsRead(String taskId) async {
+    if (!mounted) return;
+
     try {
-      await _firestore.collection('tasks').doc(taskId).update({
-        'isRead': true,
-      });
+      await _firestore.collection('tasks').doc(taskId).update({'isRead': true});
+
       setState(() {
-        final taskIndex = _tasks.indexWhere((task) => task.id == taskId);
+        final taskIndex = _tasks.indexWhere((t) => t.id == taskId);
         if (taskIndex != -1) {
           _tasks[taskIndex].isRead = true;
         }
@@ -165,9 +178,11 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> with Ti
         _animationController.forward(from: 0.0);
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi đánh dấu đã đọc: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi đánh dấu đã đọc: $e')),
+        );
+      }
     }
   }
 
@@ -175,7 +190,7 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> with Ti
     await _authService.dangXuat();
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => ManHinhDangNhap()),
+      MaterialPageRoute(builder: (_) => ManHinhDangNhap()),
     );
   }
 
@@ -188,6 +203,7 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> with Ti
           return Scaffold(body: Center(child: CircularProgressIndicator()));
         }
         final role = snapshot.data!.getString('role') ?? 'Employee';
+
         return Scaffold(
           appBar: AppBar(
             title: Text('Danh Sách Nhiệm Vụ'),
@@ -201,37 +217,37 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> with Ti
               ),
             ),
             actions: [
+              // NÚT THÊM - CHỈ ADMIN & MANAGER
               if (role == 'Admin' || role == 'Manager')
                 IconButton(
                   icon: Icon(Icons.add_circle_outline),
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => ManHinhThemNhiemVu()),
-                    ).then((_) => _layDanhSachNhiemVu());
+                      MaterialPageRoute(builder: (_) => ManHinhThemNhiemVu()),
+                    ).then((_) => _refreshTasks());
                   },
                   tooltip: 'Thêm nhiệm vụ',
                 ),
+
+              // HỒ SƠ
               IconButton(
                 icon: Icon(Icons.person_outline),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => ProfileScreen()),
-                  );
-                },
+                onPressed: () => Navigator.push(
+                    context, MaterialPageRoute(builder: (_) => ProfileScreen())),
                 tooltip: 'Hồ sơ',
               ),
+
+              // THỐNG KÊ - HIỆN CHO TẤT CẢ
               IconButton(
                 icon: Icon(Icons.bar_chart),
-                onPressed: () {
-                  Navigator.push(
+                onPressed: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => PerformanceScreen()),
-                  );
-                },
-                tooltip: 'Thống kê',
+                    MaterialPageRoute(builder: (_) => PerformanceScreen())),
+                tooltip: 'Thống kê hiệu suất',
               ),
+
+              // ĐĂNG XUẤT
               IconButton(
                 icon: Icon(Icons.logout),
                 onPressed: _dangXuat,
@@ -241,6 +257,7 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> with Ti
           ),
           body: Column(
             children: [
+              // Thanh tìm kiếm + lọc
               Padding(
                 padding: EdgeInsets.all(16.0),
                 child: Row(
@@ -252,8 +269,7 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> with Ti
                           hintText: 'Tìm kiếm nhiệm vụ...',
                           prefixIcon: Icon(Icons.search),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
+                              borderRadius: BorderRadius.circular(12)),
                         ),
                       ),
                     ),
@@ -262,12 +278,14 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> with Ti
                       value: _filterStatus,
                       items: [
                         DropdownMenuItem(value: 'all', child: Text('Tất cả')),
-                        DropdownMenuItem(value: 'completed', child: Text('Hoàn thành')),
-                        DropdownMenuItem(value: 'pending', child: Text('Chưa hoàn thành')),
+                        DropdownMenuItem(
+                            value: 'completed', child: Text('Hoàn thành')),
+                        DropdownMenuItem(
+                            value: 'pending', child: Text('Chưa hoàn thành')),
                       ],
-                      onChanged: (value) {
+                      onChanged: (v) {
                         setState(() {
-                          _filterStatus = value!;
+                          _filterStatus = v!;
                           _filterTasks();
                           _updateAnimations();
                           _animationController.forward(from: 0.0);
@@ -277,186 +295,168 @@ class _ManHinhDanhSachNhiemVuState extends State<ManHinhDanhSachNhiemVu> with Ti
                   ],
                 ),
               ),
+
+              // Danh sách nhiệm vụ + Pull to Refresh
               Expanded(
-                child: _isLoading
-                    ? Center(child: CircularProgressIndicator())
-                    : _filteredTasks.isEmpty
-                    ? Center(child: Text('Chưa có nhiệm vụ nào được giao'))
-                    : ListView.builder(
-                  itemCount: _filteredTasks.length,
-                  itemBuilder: (context, index) {
-                    final task = _filteredTasks[index];
-                    return SlideTransition(
-                      position: _slideAnimations[index],
-                      child: Dismissible(
-                        key: Key(task.id),
-                        background: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Colors.red.shade400, Colors.red.shade600],
-                            ),
-                          ),
-                          alignment: Alignment.centerRight,
-                          padding: EdgeInsets.only(right: 16),
-                          child: Icon(Icons.delete, color: Colors.white),
-                        ),
-                        direction: role == 'Admin'
-                            ? DismissDirection.endToStart
-                            : DismissDirection.none,
-                        onDismissed: (direction) async {
-                          await _firestore
-                              .collection('tasks')
-                              .doc(task.id)
-                              .delete();
-                          setState(() {
-                            _tasks.remove(task);
-                            _filterTasks();
-                            _updateAnimations();
-                            _animationController.forward(from: 0.0);
-                          });
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Đã xóa nhiệm vụ')),
-                          );
-                        },
-                        child: Card(
-                          elevation: 4,
-                          margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          color: task.isCompleted
-                              ? Colors.green.shade50
-                              : task.isRead
-                              ? Colors.red.shade50
-                              : Colors.white,
-                          child: ListTile(
-                            leading: Icon(
-                              task.isCompleted ? Icons.check_circle : Icons.pending,
-                              color: task.isCompleted ? Colors.green : Colors.red,
-                            ),
-                            title: Text(
-                              task.title,
-                              style: TextStyle(
-                                fontWeight: task.isRead ? FontWeight.normal : FontWeight.bold,
-                                color: Colors.black87,
-                              ),
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                child: RefreshIndicator(
+                  onRefresh: _refreshTasks,
+                  color: Colors.blue.shade700,
+                  backgroundColor: Colors.white,
+                  child: _isLoading
+                      ? Center(child: CircularProgressIndicator())
+                      : _filteredTasks.isEmpty
+                      ? LayoutBuilder(
+                    builder: (context, constraints) =>
+                        SingleChildScrollView(
+                          physics: AlwaysScrollableScrollPhysics(),
+                          child: Container(
+                            height: constraints.maxHeight,
+                            alignment: Alignment.center,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                if (task.description != null)
-                                  Text(
-                                    task.description!,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                Text('Đến hạn: ${DateFormatter.formatDate(task.dueDate)}'),
-                                Text('Giao cho: ${task.assignedTo} (ID: ${task.employeeId ?? 'N/A'})'),
+                                Icon(Icons.assignment_late,
+                                    size: 64, color: Colors.grey),
+                                SizedBox(height: 16),
+                                Text(
+                                  'Chưa có nhiệm vụ nào được giao',
+                                  style: TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.grey.shade600),
+                                ),
                               ],
                             ),
-                            onTap: () {
-                              _markAsRead(task.id);
-                              Navigator.push(
-                                context,
-                                PageRouteBuilder(
-                                  pageBuilder: (context, animation, secondaryAnimation) =>
-                                      TaskDetailScreen(task: task),
-                                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                                    return FadeTransition(opacity: animation, child: child);
-                                  },
-                                ),
-                              ).then((_) => _layDanhSachNhiemVu());
-                            },
                           ),
                         ),
-                      ),
-                    );
-                  },
+                  )
+                      : ListView.builder(
+                    physics: AlwaysScrollableScrollPhysics(),
+                    itemCount: _filteredTasks.length,
+                    itemBuilder: (context, index) {
+                      // AN TOÀN: Kiểm tra index
+                      if (index >= _slideAnimations.length ||
+                          index >= _filteredTasks.length) {
+                        return SizedBox.shrink();
+                      }
+
+                      final task = _filteredTasks[index];
+                      final animation = _slideAnimations[index];
+
+                      return SlideTransition(
+                        position: animation,
+                        child: Dismissible(
+                          key: Key(task.id),
+                          background: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.red.shade400,
+                                  Colors.red.shade600
+                                ],
+                              ),
+                            ),
+                            alignment: Alignment.centerRight,
+                            padding: EdgeInsets.only(right: 16),
+                            child:
+                            Icon(Icons.delete, color: Colors.white),
+                          ),
+                          direction: role == 'Admin'
+                              ? DismissDirection.endToStart
+                              : DismissDirection.none,
+                          onDismissed: (_) async {
+                            await _firestore
+                                .collection('tasks')
+                                .doc(task.id)
+                                .delete();
+                            setState(() {
+                              _tasks.remove(task);
+                              _filterTasks();
+                              _updateAnimations();
+                              _animationController.forward(from: 0.0);
+                            });
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text('Đã xóa nhiệm vụ')),
+                            );
+                          },
+                          child: Card(
+                            elevation: 4,
+                            margin: EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
+                            shape: RoundedRectangleBorder(
+                                borderRadius:
+                                BorderRadius.circular(12)),
+                            color: task.isCompleted
+                                ? Colors.green.shade50
+                                : (task.isOverdue && !task.isCompleted)
+                                ? Colors.red.shade50
+                                : Colors.white,
+                            child: ListTile(
+                              leading: Icon(
+                                task.isCompleted
+                                    ? Icons.check_circle
+                                    : Icons.pending,
+                                color: task.isCompleted
+                                    ? Colors.green
+                                    : Colors.red,
+                              ),
+                              title: Text(
+                                task.title,
+                                style: TextStyle(
+                                  fontWeight: task.isRead
+                                      ? FontWeight.normal
+                                      : FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                                children: [
+                                  if (task.description != null)
+                                    Text(task.description!,
+                                        maxLines: 1,
+                                        overflow:
+                                        TextOverflow.ellipsis),
+                                  Text(
+                                      'Đến hạn: ${DateFormatter.formatDate(task.dueDate)}'),
+                                  if (task.isOverdue && !task.isCompleted)
+                                    Text(
+                                      'QUÁ HẠN',
+                                      style: TextStyle(
+                                        color: Colors.red.shade700,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  Text(
+                                      'Giao cho: ${task.assignedTo} (ID: ${task.employeeId ?? 'N/A'})'),
+                                ],
+                              ),
+                              onTap: () {
+                                _markAsRead(task.id);
+                                Navigator.push(
+                                  context,
+                                  PageRouteBuilder(
+                                    pageBuilder: (_, __, ___) =>
+                                        TaskDetailScreen(task: task),
+                                    transitionsBuilder:
+                                        (_, a, __, c) =>
+                                        FadeTransition(
+                                            opacity: a, child: c),
+                                  ),
+                                ).then((_) => _refreshTasks());
+                              },
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ),
             ],
           ),
-        );
-      },
-    );
-  }
-}
-
-class TaskSearchDelegate extends SearchDelegate {
-  final List<Task> tasks;
-  final Function(String) markAsRead;
-
-  TaskSearchDelegate(this.tasks, this.markAsRead);
-
-  @override
-  List<Widget> buildActions(BuildContext context) {
-    return [
-      IconButton(
-        icon: Icon(Icons.clear),
-        onPressed: () {
-          query = '';
-        },
-      ),
-    ];
-  }
-
-  @override
-  Widget buildLeading(BuildContext context) {
-    return IconButton(
-      icon: Icon(Icons.arrow_back),
-      onPressed: () {
-        close(context, null);
-      },
-    );
-  }
-
-  @override
-  Widget buildResults(BuildContext context) {
-    final results = tasks.where((task) =>
-    task.title.toLowerCase().contains(query.toLowerCase()) ||
-        task.assignedTo.toLowerCase().contains(query.toLowerCase())).toList();
-
-    return ListView.builder(
-      itemCount: results.length,
-      itemBuilder: (context, index) {
-        final task = results[index];
-        return ListTile(
-          title: Text(task.title),
-          subtitle: Text('Giao cho: ${task.assignedTo}'),
-          onTap: () {
-            markAsRead(task.id);
-            close(context, null);
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => TaskDetailScreen(task: task)),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  @override
-  Widget buildSuggestions(BuildContext context) {
-    final suggestions = tasks.where((task) =>
-    task.title.toLowerCase().contains(query.toLowerCase()) ||
-        task.assignedTo.toLowerCase().contains(query.toLowerCase())).toList();
-
-    return ListView.builder(
-      itemCount: suggestions.length,
-      itemBuilder: (context, index) {
-        final task = suggestions[index];
-        return ListTile(
-          title: Text(task.title),
-          subtitle: Text('Giao cho: ${task.assignedTo}'),
-          onTap: () {
-            markAsRead(task.id);
-            close(context, null);
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => TaskDetailScreen(task: task)),
-            );
-          },
         );
       },
     );
