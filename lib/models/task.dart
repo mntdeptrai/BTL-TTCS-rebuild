@@ -5,32 +5,31 @@ class Task {
   final String title;
   final String? description;
   final DateTime dueDate;
-  bool isCompleted; // Bỏ final để có thể thay đổi
-  final String userId;
+  bool isCompleted; // Có thể thay đổi
   final String assignedTo;
+  final String? createdBy;
   String? employeeId;
   bool isRead;
-  String? createdBy;
 
   Task({
     required this.id,
     required this.title,
     this.description,
     required this.dueDate,
-    required this.isCompleted,
-    required this.userId,
+    this.isCompleted = false,
     required this.assignedTo,
+    this.createdBy,
     this.employeeId,
     this.isRead = false,
-    this.createdBy,
   });
 
   // Kiểm tra nhiệm vụ có quá hạn không
-  bool get isOverdue => DateTime.now().isAfter(dueDate);
+  bool get isOverdue => DateTime.now().isAfter(dueDate) && !isCompleted;
 
   // Có thể thay đổi trạng thái không (chỉ khi chưa quá hạn)
   bool get canChangeStatus => !isOverdue;
 
+  // Từ Firestore JSON
   factory Task.fromJson(Map<String, dynamic> json, String id) {
     return Task(
       id: id,
@@ -38,39 +37,38 @@ class Task {
       description: json['description'],
       dueDate: (json['dueDate'] as Timestamp).toDate(),
       isCompleted: json['isCompleted'] ?? false,
-      userId: json['userId'] ?? '',
       assignedTo: json['assignedTo'] ?? '',
+      createdBy: json['createdBy'],
       employeeId: json['employeeId'] as String?,
       isRead: json['isRead'] ?? false,
-      createdBy: json['createdBy'],
     );
   }
 
+  // Sang JSON để lưu Firestore
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
       'title': title,
       'description': description,
-      'dueDate': dueDate,
+      'dueDate': Timestamp.fromDate(dueDate),
       'isCompleted': isCompleted,
-      'userId': userId,
       'assignedTo': assignedTo,
-      'isRead': isRead,
       'createdBy': createdBy,
+      'employeeId': employeeId,
+      'isRead': isRead,
     };
   }
 
+  // Copy với thay đổi
   Task copyWith({
     String? id,
     String? title,
     String? description,
     DateTime? dueDate,
     bool? isCompleted,
-    String? userId,
     String? assignedTo,
+    String? createdBy,
     String? employeeId,
     bool? isRead,
-    String? createdBy,
   }) {
     return Task(
       id: id ?? this.id,
@@ -78,11 +76,10 @@ class Task {
       description: description ?? this.description,
       dueDate: dueDate ?? this.dueDate,
       isCompleted: isCompleted ?? this.isCompleted,
-      userId: userId ?? this.userId,
       assignedTo: assignedTo ?? this.assignedTo,
+      createdBy: createdBy ?? this.createdBy,
       employeeId: employeeId ?? this.employeeId,
       isRead: isRead ?? this.isRead,
-      createdBy: createdBy ?? this.createdBy,
     );
   }
 }

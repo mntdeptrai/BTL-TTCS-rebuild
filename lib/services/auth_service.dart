@@ -1,12 +1,14 @@
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
+import 'package:firebase_messaging/firebase_messaging.dart'; // THÊM: Firebase Messaging
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 
 class AuthService {
   final fb.FirebaseAuth _auth = fb.FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseMessaging _messaging = FirebaseMessaging.instance; // THÊM
 
   // Đăng nhập với identifier (email, username, hoặc phone)
   Future<User?> dangNhap(String identifier, String password) async {
@@ -45,7 +47,7 @@ class AuthService {
 
       final userData = userQuery.docs.first.data() as Map<String, dynamic>;
       final userId = userQuery.docs.first.id;
-      final email = userData['email'] as String?; // Lấy email thực tế từ Firestore
+      final email = userData['email'] as String?;
 
       if (email == null || email.isEmpty) {
         print('Email không tồn tại cho tài khoản: $identifier');
@@ -71,11 +73,24 @@ class AuthService {
         role: userData['role'],
         phoneNumber: userData['phoneNumber'],
       );
+
       print('Đăng nhập thành công với identifier: $identifier, user: $user');
+
+      // LƯU THÔNG TIN VÀO SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('role', user.role ?? 'Employee');
       await prefs.setString('userId', user.id);
       await prefs.setString('username', user.username);
+
+      // THÊM: Lưu FCM Token vào Firestore
+      final token = await _messaging.getToken();
+      if (token != null) {
+        await _firestore.collection('users').doc(userId).update({
+          'fcmToken': token,
+        });
+        print('Đã lưu FCM Token cho user $userId: $token');
+      }
+
       return user;
     } catch (e) {
       print('Lỗi đăng nhập chi tiết: $e');
@@ -90,9 +105,11 @@ class AuthService {
         email: email,
         password: password,
       );
+
       // Tạo ID nhân viên ngẫu nhiên (1000 - 9999)
       final random = Random();
       final employeeId = (1000 + random.nextInt(9000)).toString();
+
       final user = User(
         id: userCredential.user!.uid,
         username: username,
@@ -101,6 +118,8 @@ class AuthService {
         role: role,
         phoneNumber: phoneNumber,
       );
+
+      // Lưu thông tin người dùng vào Firestore
       await _firestore.collection('users').doc(user.id).set({
         'id': user.id,
         'username': user.username,
@@ -110,10 +129,22 @@ class AuthService {
         'phoneNumber': user.phoneNumber,
         'email': email,
       });
+
+      // LƯU THÔNG TIN VÀO SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('role', user.role);
       await prefs.setString('userId', user.id);
       await prefs.setString('username', user.username);
+
+      // THÊM: Lưu FCM Token vào Firestore
+      final token = await _messaging.getToken();
+      if (token != null) {
+        await _firestore.collection('users').doc(user.id).update({
+          'fcmToken': token,
+        });
+        print('Đã lưu FCM Token cho user mới ${user.id}: $token');
+      }
+
       return user;
     } catch (e) {
       print('Lỗi đăng ký: $e');

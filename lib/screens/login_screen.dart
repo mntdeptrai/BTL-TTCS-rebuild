@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../utils/error_handler.dart';
-import 'task_list_screen.dart';
+import '../screens/task_list_screen.dart';
 
 class ManHinhDangNhap extends StatefulWidget {
   @override
@@ -27,16 +27,9 @@ class _ManHinhDangNhapState extends State<ManHinhDangNhap> with SingleTickerProv
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: Duration(milliseconds: 500),
-    );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
-    );
+    _controller = AnimationController(vsync: this, duration: Duration(milliseconds: 500));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
     _controller.forward();
   }
 
@@ -70,33 +63,24 @@ class _ManHinhDangNhapState extends State<ManHinhDangNhap> with SingleTickerProv
 
   Future<void> _submit() async {
     if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
+      setState(() => _isLoading = true);
       try {
         if (_isLogin) {
-          final user = await _authService.dangNhap(
-              _identifierController.text, _passwordController.text);
+          final user = await _authService.dangNhap(_identifierController.text, _passwordController.text);
           if (user != null) {
             Navigator.pushReplacement(
               context,
               PageRouteBuilder(
-                pageBuilder: (context, animation, secondaryAnimation) => ManHinhDanhSachNhiemVu(),
-                transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                  return FadeTransition(opacity: animation, child: child);
-                },
+                pageBuilder: (_, __, ___) => TaskListScreen(),
+                transitionsBuilder: (_, a, __, c) => FadeTransition(opacity: a, child: c),
               ),
             );
           } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Đăng nhập thất bại')),
-            );
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Đăng nhập thất bại')));
           }
         } else {
           if (_passwordController.text != _confirmPasswordController.text) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Mật khẩu và xác nhận mật khẩu không khớp')),
-            );
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Mật khẩu không khớp')));
             return;
           }
           final user = await _authService.dangKy(
@@ -111,26 +95,18 @@ class _ManHinhDangNhapState extends State<ManHinhDangNhap> with SingleTickerProv
             Navigator.pushReplacement(
               context,
               PageRouteBuilder(
-                pageBuilder: (context, animation, secondaryAnimation) => ManHinhDanhSachNhiemVu(),
-                transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                  return FadeTransition(opacity: animation, child: child);
-                },
+                pageBuilder: (_, __, ___) => TaskListScreen(),
+                transitionsBuilder: (_, a, __, c) => FadeTransition(opacity: a, child: c),
               ),
             );
           } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Đăng ký thất bại')),
-            );
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Đăng ký thất bại')));
           }
         }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(ErrorHandler.getErrorMessage(e))),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ErrorHandler.getErrorMessage(e))));
       } finally {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -143,28 +119,23 @@ class _ManHinhDangNhapState extends State<ManHinhDangNhap> with SingleTickerProv
           image: DecorationImage(
             image: AssetImage('assets/background_login.png'),
             fit: BoxFit.cover,
-            colorFilter: ColorFilter.mode(
-              Colors.black.withValues(alpha: 0.3), // Replaced withOpacity with withValues
-              BlendMode.darken,
-            ),
+            colorFilter: ColorFilter.mode(Colors.black.withValues(alpha: 0.3), BlendMode.darken),
           ),
         ),
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               child: FadeTransition(
                 opacity: _fadeAnimation,
                 child: ScaleTransition(
                   scale: _scaleAnimation,
                   child: Card(
                     elevation: 10,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    color: Colors.white.withValues(alpha: 0.95), // Replaced withOpacity with withValues
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    color: Colors.white.withValues(alpha: 0.95),
                     child: Padding(
-                      padding: EdgeInsets.all(24.0),
+                      padding: EdgeInsets.all(24),
                       child: Form(
                         key: _formKey,
                         child: Column(
@@ -177,14 +148,11 @@ class _ManHinhDangNhapState extends State<ManHinhDangNhap> with SingleTickerProv
                               child: Text(
                                 _isLogin ? 'Đăng Nhập' : 'Đăng Ký',
                                 key: ValueKey(_isLogin),
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.blue.shade900,
-                                ),
+                                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
                               ),
                             ),
                             SizedBox(height: 16),
+                            // PHẦN FORM ĐÃ ĐƯỢC KHÔI PHỤC
                             AnimatedSwitcher(
                               duration: Duration(milliseconds: 300),
                               child: _isLogin
@@ -196,26 +164,20 @@ class _ManHinhDangNhapState extends State<ManHinhDangNhap> with SingleTickerProv
                                     decoration: InputDecoration(
                                       labelText: 'Email/Tên đăng nhập/SĐT',
                                       prefixIcon: Icon(Icons.verified_user),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                                     ),
-                                    validator: (value) =>
-                                    value!.isEmpty ? 'Vui lòng nhập thông tin' : null,
+                                    validator: (v) => v!.isEmpty ? 'Vui lòng nhập thông tin' : null,
                                   ),
                                   SizedBox(height: 12),
                                   TextFormField(
                                     controller: _passwordController,
+                                    obscureText: true,
                                     decoration: InputDecoration(
                                       labelText: 'Mật khẩu',
                                       prefixIcon: Icon(Icons.lock_outline),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                                     ),
-                                    obscureText: true,
-                                    validator: (value) =>
-                                    value!.isEmpty ? 'Vui lòng nhập mật khẩu' : null,
+                                    validator: (v) => v!.isEmpty ? 'Vui lòng nhập mật khẩu' : null,
                                   ),
                                 ],
                               )
@@ -227,12 +189,9 @@ class _ManHinhDangNhapState extends State<ManHinhDangNhap> with SingleTickerProv
                                     decoration: InputDecoration(
                                       labelText: 'Tên đăng nhập',
                                       prefixIcon: Icon(Icons.person),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                                     ),
-                                    validator: (value) =>
-                                    value!.isEmpty ? 'Vui lòng nhập tên đăng nhập' : null,
+                                    validator: (v) => v!.isEmpty ? 'Vui lòng nhập tên đăng nhập' : null,
                                   ),
                                   SizedBox(height: 12),
                                   TextFormField(
@@ -240,77 +199,59 @@ class _ManHinhDangNhapState extends State<ManHinhDangNhap> with SingleTickerProv
                                     decoration: InputDecoration(
                                       labelText: 'Họ và tên',
                                       prefixIcon: Icon(Icons.person_outline),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                                     ),
-                                    validator: (value) =>
-                                    value!.isEmpty ? 'Vui lòng nhập họ và tên' : null,
+                                    validator: (v) => v!.isEmpty ? 'Vui lòng nhập họ và tên' : null,
                                   ),
                                   SizedBox(height: 12),
                                   TextFormField(
                                     controller: _emailController,
+                                    keyboardType: TextInputType.emailAddress,
                                     decoration: InputDecoration(
                                       labelText: 'Email',
                                       prefixIcon: Icon(Icons.email),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                                     ),
-                                    keyboardType: TextInputType.emailAddress,
-                                    validator: (value) {
-                                      if (value!.isEmpty) return 'Vui lòng nhập email';
-                                      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                                          .hasMatch(value)) {
-                                        return 'Email không hợp lệ';
-                                      }
+                                    validator: (v) {
+                                      if (v!.isEmpty) return 'Vui lòng nhập email';
+                                      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v)) return 'Email không hợp lệ';
                                       return null;
                                     },
                                   ),
                                   SizedBox(height: 12),
                                   TextFormField(
                                     controller: _phoneController,
+                                    keyboardType: TextInputType.phone,
                                     decoration: InputDecoration(
                                       labelText: 'Số điện thoại',
                                       prefixIcon: Icon(Icons.phone),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                                     ),
-                                    keyboardType: TextInputType.phone,
-                                    validator: (value) =>
-                                    value!.isEmpty ? 'Vui lòng nhập số điện thoại' : null,
+                                    validator: (v) => v!.isEmpty ? 'Vui lòng nhập số điện thoại' : null,
                                   ),
                                   SizedBox(height: 12),
                                   TextFormField(
                                     controller: _passwordController,
+                                    obscureText: true,
                                     decoration: InputDecoration(
                                       labelText: 'Mật khẩu',
                                       prefixIcon: Icon(Icons.lock_outline),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                                     ),
-                                    obscureText: true,
-                                    validator: (value) =>
-                                    value!.isEmpty ? 'Vui lòng nhập mật khẩu' : null,
+                                    validator: (v) => v!.isEmpty ? 'Vui lòng nhập mật khẩu' : null,
                                   ),
                                   SizedBox(height: 12),
                                   TextFormField(
                                     controller: _confirmPasswordController,
+                                    obscureText: true,
                                     decoration: InputDecoration(
                                       labelText: 'Xác nhận mật khẩu',
                                       prefixIcon: Icon(Icons.lock_outline),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                                     ),
-                                    obscureText: true,
-                                    validator: (value) {
-                                      if (value!.isEmpty) return 'Vui lòng xác nhận mật khẩu';
-                                      if (value != _passwordController.text) {
-                                        return 'Mật khẩu không khớp';
-                                      }
+                                    validator: (v) {
+                                      if (v!.isEmpty) return 'Vui lòng xác nhận mật khẩu';
+                                      if (v != _passwordController.text) return 'Mật khẩu không khớp';
                                       return null;
                                     },
                                   ),
@@ -327,11 +268,8 @@ class _ManHinhDangNhapState extends State<ManHinhDangNhap> with SingleTickerProv
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.blue.shade700,
                                   foregroundColor: Colors.white,
-                                  padding: EdgeInsets.symmetric(
-                                      horizontal: 32, vertical: 12),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
+                                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                   elevation: 5,
                                 ),
                                 child: Row(
@@ -339,26 +277,17 @@ class _ManHinhDangNhapState extends State<ManHinhDangNhap> with SingleTickerProv
                                   children: [
                                     Icon(_isLogin ? Icons.login : Icons.person_add),
                                     SizedBox(width: 8),
-                                    Text(
-                                      _isLogin ? 'Đăng Nhập' : 'Đăng Ký',
-                                      style: TextStyle(fontSize: 16),
-                                    ),
+                                    Text(_isLogin ? 'Đăng Nhập' : 'Đăng Ký', style: TextStyle(fontSize: 16)),
                                   ],
                                 ),
                               ),
                             ),
                             SizedBox(height: 16),
-                            AnimatedOpacity(
-                              opacity: _isLogin ? 1.0 : 0.8,
-                              duration: Duration(milliseconds: 300),
-                              child: TextButton(
-                                onPressed: _switchMode,
-                                child: Text(
-                                  _isLogin
-                                      ? 'Chưa có tài khoản? Đăng ký'
-                                      : 'Đã có tài khoản? Đăng nhập',
-                                  style: TextStyle(color: Colors.blue.shade700),
-                                ),
+                            TextButton(
+                              onPressed: _switchMode,
+                              child: Text(
+                                _isLogin ? 'Chưa có tài khoản? Đăng ký' : 'Đã có tài khoản? Đăng nhập',
+                                style: TextStyle(color: Colors.blue.shade700),
                               ),
                             ),
                           ],

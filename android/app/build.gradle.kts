@@ -2,20 +2,7 @@ plugins {
     id("com.android.application")
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
-    // Thêm plugin Google Services với phiên bản cụ thể
     id("com.google.gms.google-services") version "4.4.2"
-}
-
-dependencies {
-    // Import the Firebase BoM
-    implementation(platform("com.google.firebase:firebase-bom:34.3.0"))
-
-    // Thêm dependencies cho các sản phẩm Firebase bạn muốn dùng
-    implementation("com.google.firebase:firebase-analytics")
-    implementation("com.google.firebase:firebase-firestore") // Thêm Firestore
-
-    // Có thể thêm các sản phẩm khác nếu cần
-    // Xem: https://firebase.google.com/docs/android/setup#available-libraries
 }
 
 android {
@@ -24,6 +11,8 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        // BẬT DESUGARING ĐỂ DÙNG flutter_local_notifications
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
@@ -42,11 +31,22 @@ android {
 
     buildTypes {
         release {
-            // Xóa hoặc sửa signingConfig nếu chưa cấu hình khóa ký
-            // Nếu chưa có keystore, để trống hoặc dùng debug cho thử nghiệm
-            // signingConfig = signingConfigs.getByName("debug")
+            // Dùng debug key để build thử nghiệm
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
+}
+
+dependencies {
+    // Firebase BoM
+    implementation(platform("com.google.firebase:firebase-bom:34.3.0"))
+
+    // Firebase Analytics & Firestore
+    implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-firestore")
+
+    // THÊM DÒNG NÀY: BẬT DESUGARING CHO LOCAL NOTIFICATIONS
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 }
 
 flutter {
