@@ -1,6 +1,10 @@
+// lib/screens/task_list_screen.dart
+// ĐÃ DỌN SẠCH FCM → KHÔNG CRASH KHI NHẤN THÔNG BÁO NỮA
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../models/task.dart';
@@ -10,8 +14,6 @@ import 'profile_screen.dart';
 import 'task_detail_screen.dart';
 import 'performance_screen.dart';
 import '../utils/date_formatter.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 
 class TaskListScreen extends StatefulWidget {
   @override
@@ -43,48 +45,8 @@ class _TaskListScreenState extends State<TaskListScreen>
     _searchController.addListener(_onSearchChanged);
     _loadUserData();
 
-    // FCM: Khi app đang mở
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              message.notification?.body ?? 'Bạn có nhiệm vụ mới!',
-              style: TextStyle(color: Colors.white),
-            ),
-            backgroundColor: Colors.blue.shade700,
-            duration: Duration(seconds: 3),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        );
-        _refreshTasks();
-      }
-    });
-
-    // FCM: Khi nhấn thông báo (app background/terminated)
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      final taskId = message.data['taskId'];
-      if (taskId != null && mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => TaskDetailScreen(
-              task: Task(
-                id: taskId,
-                title: message.data['type'] == 'due_soon' ? 'Sắp hết hạn!' : 'Nhiệm vụ mới',
-                description: '',
-                dueDate: DateTime.now(),
-                assignedTo: '',
-                createdBy: '',
-                isCompleted: false,
-                isRead: false,
-              ),
-            ),
-          ),
-        ).then((_) => _refreshTasks());
-      }
-    });
+    // ĐÃ XÓA HẾT FirebaseMessaging.onMessage & onMessageOpenedApp
+    // → Tất cả xử lý thông báo đã được chuyển sang main.dart
   }
 
   @override
@@ -117,6 +79,7 @@ class _TaskListScreenState extends State<TaskListScreen>
       final apiService = ApiService();
       final tasks = await apiService.layNhiemVu();
 
+      // Cập nhật employeeId + xử lý quá hạn
       for (var task in tasks) {
         if (task.isOverdue && !task.isCompleted) {
           await _firestore.collection('tasks').doc(task.id).update({'isCompleted': false});
@@ -154,14 +117,16 @@ class _TaskListScreenState extends State<TaskListScreen>
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi tải nhiệm vụ: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi tải nhiệm vụ: $e')),
+        );
       }
     }
   }
 
   void _onSearchChanged() {
     _debounceTimer?.cancel();
-    _debounceTimer = Timer(Duration(seconds: 1), () {
+    _debounceTimer = Timer(const Duration(seconds: 1), () {
       _filterTasks();
       _updateAnimations();
       _animationController.forward(from: 0.0);
@@ -172,7 +137,8 @@ class _TaskListScreenState extends State<TaskListScreen>
     final query = _searchController.text.toLowerCase();
     setState(() {
       _filteredTasks = _tasks.where((task) {
-        final matchesSearch = task.title.toLowerCase().contains(query) || task.assignedTo.toLowerCase().contains(query);
+        final matchesSearch = task.title.toLowerCase().contains(query) ||
+            task.assignedTo.toLowerCase().contains(query);
         if (_filterStatus == 'all') return matchesSearch;
         if (_filterStatus == 'completed') return matchesSearch && task.isCompleted;
         return matchesSearch && !task.isCompleted;
@@ -183,8 +149,11 @@ class _TaskListScreenState extends State<TaskListScreen>
   void _updateAnimations() {
     _slideAnimations = List.generate(
       _filteredTasks.length,
-          (i) => Tween<Offset>(begin: Offset(-1, 0), end: Offset.zero).animate(
-        CurvedAnimation(parent: _animationController, curve: Interval(i * 0.1, 1.0, curve: Curves.easeOut)),
+          (i) => Tween<Offset>(begin: const Offset(-1, 0), end: Offset.zero).animate(
+        CurvedAnimation(
+          parent: _animationController,
+          curve: Interval(i * 0.1, 1.0, curve: Curves.easeOut),
+        ),
       ),
     );
   }
@@ -202,14 +171,19 @@ class _TaskListScreenState extends State<TaskListScreen>
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi đánh dấu đã đọc: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi đánh dấu đã đọc: $e')),
+        );
       }
     }
   }
 
   Future<void> _dangXuat() async {
     await _authService.dangXuat();
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => ManHinhDangNhap()));
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => ManHinhDangNhap()),
+    );
   }
 
   @override
@@ -217,43 +191,72 @@ class _TaskListScreenState extends State<TaskListScreen>
     return FutureBuilder<SharedPreferences>(
       future: SharedPreferences.getInstance(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) return Scaffold(body: Center(child: CircularProgressIndicator()));
+        if (!snapshot.hasData) {
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
         final role = snapshot.data!.getString('role') ?? 'Employee';
 
         return Scaffold(
           appBar: AppBar(
-            title: Text('Danh Sách Nhiệm Vụ'),
+            title: const Text('Danh Sách Nhiệm Vụ'),
             flexibleSpace: Container(
               decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [Colors.blue.shade700, Colors.blue.shade300], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                gradient: LinearGradient(
+                  colors: [Colors.blue.shade700, Colors.blue.shade300],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
               ),
             ),
             actions: [
               if (role == 'Admin' || role == 'Manager')
-                IconButton(icon: Icon(Icons.add_circle_outline), onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => ManHinhThemNhiemVu())).then((_) => _refreshTasks());
-                }, tooltip: 'Thêm nhiệm vụ'),
-              IconButton(icon: Icon(Icons.person_outline), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen())), tooltip: 'Hồ sơ'),
-              IconButton(icon: Icon(Icons.bar_chart), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PerformanceScreen())), tooltip: 'Thống kê'),
-              IconButton(icon: Icon(Icons.logout), onPressed: _dangXuat, tooltip: 'Đăng xuất'),
+                IconButton(
+                  icon: const Icon(Icons.add_circle_outline),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => ManHinhThemNhiemVu()),
+                    ).then((_) => _refreshTasks());
+                  },
+                  tooltip: 'Thêm nhiệm vụ',
+                ),
+              IconButton(
+                icon: const Icon(Icons.person_outline),
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen())),
+                tooltip: 'Hồ sơ',
+              ),
+              IconButton(
+                icon: const Icon(Icons.bar_chart),
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PerformanceScreen())),
+                tooltip: 'Thống kê',
+              ),
+              IconButton(
+                icon: const Icon(Icons.logout),
+                onPressed: _dangXuat,
+                tooltip: 'Đăng xuất',
+              ),
             ],
           ),
           body: Column(
             children: [
               Padding(
-                padding: EdgeInsets.all(16),
+                padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
                     Expanded(
                       child: TextField(
                         controller: _searchController,
-                        decoration: InputDecoration(hintText: 'Tìm kiếm...', prefixIcon: Icon(Icons.search), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                        decoration: InputDecoration(
+                          hintText: 'Tìm kiếm...',
+                          prefixIcon: const Icon(Icons.search),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
                       ),
                     ),
-                    SizedBox(width: 7),
+                    const SizedBox(width: 7),
                     DropdownButton<String>(
                       value: _filterStatus,
-                      items: [
+                      items: const [
                         DropdownMenuItem(value: 'all', child: Text('Tất cả')),
                         DropdownMenuItem(value: 'completed', child: Text('Hoàn thành')),
                         DropdownMenuItem(value: 'pending', child: Text('Chưa hoàn thành')),
@@ -275,11 +278,11 @@ class _TaskListScreenState extends State<TaskListScreen>
                   onRefresh: _refreshTasks,
                   color: Colors.blue.shade700,
                   child: _isLoading
-                      ? Center(child: CircularProgressIndicator())
+                      ? const Center(child: CircularProgressIndicator())
                       : _filteredTasks.isEmpty
                       ? LayoutBuilder(
                     builder: (context, constraints) => SingleChildScrollView(
-                      physics: AlwaysScrollableScrollPhysics(),
+                      physics: const AlwaysScrollableScrollPhysics(),
                       child: Container(
                         height: constraints.maxHeight,
                         alignment: Alignment.center,
@@ -287,18 +290,21 @@ class _TaskListScreenState extends State<TaskListScreen>
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.assignment_late, size: 64, color: Colors.grey),
-                            SizedBox(height: 16),
-                            Text('Chưa có nhiệm vụ nào', style: TextStyle(fontSize: 16, color: Colors.grey.shade600)),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Chưa có nhiệm vụ nào',
+                              style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+                            ),
                           ],
                         ),
                       ),
                     ),
                   )
                       : ListView.builder(
-                    physics: AlwaysScrollableScrollPhysics(),
+                    physics: const AlwaysScrollableScrollPhysics(),
                     itemCount: _filteredTasks.length,
                     itemBuilder: (context, index) {
-                      if (index >= _slideAnimations.length || index >= _filteredTasks.length) return SizedBox.shrink();
+                      if (index >= _slideAnimations.length) return const SizedBox.shrink();
                       final task = _filteredTasks[index];
                       final animation = _slideAnimations[index];
 
@@ -307,10 +313,12 @@ class _TaskListScreenState extends State<TaskListScreen>
                         child: Dismissible(
                           key: Key(task.id),
                           background: Container(
-                            decoration: BoxDecoration(gradient: LinearGradient(colors: [Colors.red.shade400, Colors.red.shade600])),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(colors: [Colors.red.shade400, Colors.red.shade600]),
+                            ),
                             alignment: Alignment.centerRight,
-                            padding: EdgeInsets.only(right: 16),
-                            child: Icon(Icons.delete, color: Colors.white),
+                            padding: const EdgeInsets.only(right: 16),
+                            child: const Icon(Icons.delete, color: Colors.white),
                           ),
                           direction: role == 'Admin' ? DismissDirection.endToStart : DismissDirection.none,
                           onDismissed: (_) async {
@@ -321,11 +329,13 @@ class _TaskListScreenState extends State<TaskListScreen>
                               _updateAnimations();
                               _animationController.forward(from: 0.0);
                             });
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Đã xóa nhiệm vụ')));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Đã xóa nhiệm vụ')),
+                            );
                           },
                           child: Card(
                             elevation: 4,
-                            margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             color: task.isCompleted
                                 ? Colors.green.shade50
@@ -333,14 +343,22 @@ class _TaskListScreenState extends State<TaskListScreen>
                                 ? Colors.red.shade50
                                 : Colors.white,
                             child: ListTile(
-                              leading: Icon(task.isCompleted ? Icons.check_circle : Icons.pending, color: task.isCompleted ? Colors.green : Colors.red),
-                              title: Text(task.title, style: TextStyle(fontWeight: task.isRead ? FontWeight.normal : FontWeight.bold)),
+                              leading: Icon(
+                                task.isCompleted ? Icons.check_circle : Icons.pending,
+                                color: task.isCompleted ? Colors.green : Colors.red,
+                              ),
+                              title: Text(
+                                task.title,
+                                style: TextStyle(fontWeight: task.isRead ? FontWeight.normal : FontWeight.bold),
+                              ),
                               subtitle: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  if (task.description != null) Text(task.description!, maxLines: 1, overflow: TextOverflow.ellipsis),
+                                  if (task.description != null)
+                                    Text(task.description!, maxLines: 1, overflow: TextOverflow.ellipsis),
                                   Text('Hạn: ${DateFormatter.formatDate(task.dueDate)}'),
-                                  if (task.isOverdue && !task.isCompleted) Text('QUÁ HẠN', style: TextStyle(color: Colors.red.shade700, fontWeight: FontWeight.bold, fontSize: 12)),
+                                  if (task.isOverdue && !task.isCompleted)
+                                    const Text('QUÁ HẠN', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12)),
                                   Text('Giao cho: ${task.assignedTo} (ID: ${task.employeeId ?? 'N/A'})'),
                                 ],
                               ),

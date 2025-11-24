@@ -15,7 +15,7 @@ void main() {
     await setupFirebase();
 
     // Build our app and trigger a frame.
-    await tester.pumpWidget(UngDungQuanLyNhiemVu());
+    await tester.pumpWidget( MyApp());
 
     // Verify that the login screen is displayed.
     expect(find.text('Đăng Nhập'), findsOneWidget); // Kiểm tra tiêu đề AppBar

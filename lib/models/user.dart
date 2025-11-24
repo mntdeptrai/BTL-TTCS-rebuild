@@ -1,32 +1,35 @@
+// lib/models/user.dart
 class User {
   final String id;
   final String username;
-  final String? fullName; // Thêm họ tên
-  final String? employeeId; // Thêm ID nhân viên
-  final String role;
+  final String fullName;
+  final String employeeId;
+  final String? role;
   final String? phoneNumber;
 
   User({
     required this.id,
     required this.username,
-    this.fullName,
-    this.employeeId,
-    required this.role,
+    required this.fullName,
+    required this.employeeId,
+    this.role,
     this.phoneNumber,
   });
 
-  factory User.fromJson(Map<String, dynamic> json) {
+  // THÊM: Chuyển từ Map (dùng khi đọc từ Firestore)
+  factory User.fromMap(Map<String, dynamic> map, String id) {
     return User(
-      id: json['id'] ?? '',
-      username: json['username'] ?? '',
-      fullName: json['fullName'],
-      employeeId: json['employeeId'],
-      role: json['role'] ?? 'Employee',
-      phoneNumber: json['phoneNumber'],
+      id: id,
+      username: map['username'] as String? ?? '',
+      fullName: map['fullName'] as String? ?? '',
+      employeeId: map['employeeId'] as String? ?? '',
+      role: map['role'] as String?,
+      phoneNumber: map['phoneNumber'] as String?,
     );
   }
 
-  Map<String, dynamic> toJson() {
+  // THÊM: Chuyển thành Map (dùng khi ghi vào Firestore)
+  Map<String, dynamic> toMap() {
     return {
       'id': id,
       'username': username,
@@ -35,5 +38,11 @@ class User {
       'role': role,
       'phoneNumber': phoneNumber,
     };
+  }
+
+  // Dễ debug
+  @override
+  String toString() {
+    return 'User(id: $id, username: $username, fullName: $fullName, role: $role)';
   }
 }
