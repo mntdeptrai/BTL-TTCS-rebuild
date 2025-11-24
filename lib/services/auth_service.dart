@@ -15,7 +15,7 @@ class AuthService {
   AuthService._internal();
 
   final fb.FirebaseAuth _auth = fb.FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance; // ← ĐÃ SỬA
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
 
   // ================================== ĐĂNG NHẬP ==================================
@@ -49,6 +49,7 @@ class AuthService {
         prefs.setString('role', user.role ?? 'Employee'),
       ]);
 
+      // CẬP NHẬT FCM TOKEN MỚI SAU KHI ĐĂNG NHẬP
       await _updateFcmToken(user.id);
       await prefs.remove('pending_task_id');
 
@@ -96,7 +97,9 @@ class AuthService {
         prefs.setString('role', role),
       ]);
 
+      // CẬP NHẬT FCM TOKEN SAU KHI ĐĂNG KÝ
       await _updateFcmToken(uid);
+
       return user;
     } catch (e) {
       print('Lỗi đăng ký: $e');
@@ -111,19 +114,53 @@ class AuthService {
       if (token != null) {
         await _firestore.collection('users').doc(userId).set({
           'fcmToken': token,
+          'tokenUpdatedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
+        print('FCM Token đã được cập nhật cho user: $userId');
       }
     } catch (e) {
-      print('Lỗi cập nhật token: $e');
+      print('Lỗi cập nhật FCM token: $e');
     }
   }
 
-  // Gọi khi app khởi động
+  // Gọi khi app khởi động (nên gọi ở main.dart hoặc splash screen)
   static Future<void> refreshTokenOnLaunch() async {
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getString('userId');
     if (userId != null) {
       await AuthService()._updateFcmToken(userId);
+    }
+  }
+
+  // ================================== ĐĂNG XUẤT – ĐÃ FIX HOÀN TOÀN ==================================
+  Future<void> dangXuat() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final currentUserId = prefs.getString('userId');
+
+      // 1. XÓA FCM TOKEN TRONG FIRESTORE (QUAN TRỌNG NHẤT – NGĂN NHẬN THÔNG BÁO SAU KHI LOGOUT)
+      if (currentUserId != null) {
+        await _firestore.collection('users').doc(currentUserId).update({
+          'fcmToken': FieldValue.delete(),
+        }).catchError((e) => print('Không thể xóa token: $e'));
+      }
+
+      // 2. XÓA TOKEN KHỎI THIẾT BỊ (FCM sẽ tạo token mới khi login lại)
+      await FirebaseMessaging.instance.deleteToken();
+
+      // 3. Đăng xuất Firebase Auth
+      await _auth.signOut();
+
+      // 4. Xóa toàn bộ dữ liệu local
+      await prefs.clear();
+
+      print('Đăng xuất thành công + đã dọn sạch FCM token');
+    } catch (e) {
+      print('Lỗi khi đăng xuất: $e');
+      // Dù có lỗi vẫn cố signOut và clear dữ liệu
+      await _auth.signOut();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
     }
   }
 
@@ -150,12 +187,6 @@ class AuthService {
   }
 
   fb.User? get currentUser => _auth.currentUser;
-
-  Future<void> dangXuat() async {
-    await _auth.signOut();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-  }
 
   // Helper
   bool _isEmail(String s) => RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(s);
