@@ -1,5 +1,3 @@
-// lib/screens/task_list_screen.dart
-// ĐÃ DỌN SẠCH FCM → KHÔNG CRASH KHI NHẤN THÔNG BÁO NỮA
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
@@ -44,9 +42,6 @@ class _TaskListScreenState extends State<TaskListScreen>
     );
     _searchController.addListener(_onSearchChanged);
     _loadUserData();
-
-    // ĐÃ XÓA HẾT FirebaseMessaging.onMessage & onMessageOpenedApp
-    // → Tất cả xử lý thông báo đã được chuyển sang main.dart
   }
 
   @override
@@ -79,7 +74,6 @@ class _TaskListScreenState extends State<TaskListScreen>
       final apiService = ApiService();
       final tasks = await apiService.layNhiemVu();
 
-      // Cập nhật employeeId + xử lý quá hạn
       for (var task in tasks) {
         if (task.isOverdue && !task.isCompleted) {
           await _firestore.collection('tasks').doc(task.id).update({'isCompleted': false});

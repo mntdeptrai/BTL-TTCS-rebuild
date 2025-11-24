@@ -5,8 +5,6 @@ import '../utils/date_formatter.dart';
 
 class TaskDetailScreen extends StatefulWidget {
   final Task task;
-
-  // ĐÃ XÓA userId → KHÔNG CẦN TRUYỀN
   const TaskDetailScreen({required this.task, Key? key}) : super(key: key);
 
   @override

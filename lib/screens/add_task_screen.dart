@@ -1,4 +1,3 @@
-// lib/screens/add_task_screen.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -17,7 +16,6 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
 
-  // Deadline có giờ phút (mặc định +1 ngày)
   DateTime _dueDate = DateTime.now().add(const Duration(days: 1));
 
   String _selectedAssignee = '';
@@ -48,6 +46,7 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
         }
       }
 
+      if (!mounted) return;
       setState(() {
         _users = filteredUsers;
         _isLoadingUsers = false;
@@ -56,6 +55,7 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
         }
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoadingUsers = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Lỗi tải người dùng: $e')),
@@ -63,7 +63,6 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
     }
   }
 
-  // CHỌN NGÀY + GIỜ + PHÚT – GIỮ NGUYÊN GIAO DIỆN CŨ
   Future<void> _selectDueDate() async {
     final DateTime? pickedDate = await showDatePicker(
       context: context,
@@ -72,14 +71,14 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
       lastDate: DateTime(2100),
     );
 
-    if (pickedDate == null) return;
+    if (pickedDate == null || !mounted) return;
 
     final TimeOfDay? pickedTime = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.fromDateTime(_dueDate),
     );
 
-    if (pickedTime != null) {
+    if (pickedTime != null && mounted) {
       setState(() {
         _dueDate = DateTime(
           pickedDate.year,
@@ -93,23 +92,34 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
   }
 
   Future<void> _themNhiemVu() async {
-    if (_formKey.currentState!.validate()) {
-      try {
-        await _apiService.themNhiemVu(
-          _titleController.text.trim(),
-          _descriptionController.text.trim(),
-          _dueDate, // ĐÃ CÓ GIỜ PHÚT
-          _selectedAssignee,
-        );
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Thêm nhiệm vụ thành công')),
-        );
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi thêm nhiệm vụ: $e')),
-        );
-      }
+    if (!_formKey.currentState!.validate()) return;
+
+    try {
+      await _apiService.themNhiemVu(
+        _titleController.text.trim(),
+        _descriptionController.text.trim(),
+        _dueDate,
+        _selectedAssignee,
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Thêm nhiệm vụ thành công'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Lỗi thêm nhiệm vụ: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -127,7 +137,6 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
           key: _formKey,
           child: Column(
             children: [
-              // Tiêu đề
               TextFormField(
                 controller: _titleController,
                 decoration: InputDecoration(
@@ -139,7 +148,6 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
               ),
               const SizedBox(height: 16),
 
-              // Mô tả
               TextFormField(
                 controller: _descriptionController,
                 decoration: InputDecoration(
@@ -151,7 +159,6 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
               ),
               const SizedBox(height: 16),
 
-              // NGÀY + GIỜ – GIỮ NGUYÊN GIAO DIỆN CŨ, CHỈ THÊM GIỜ PHÚT
               ListTile(
                 leading: const Icon(Icons.calendar_today, color: Colors.blue),
                 title: Text(
@@ -167,11 +174,10 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
               ),
               const SizedBox(height: 16),
 
-              // Chọn nhân viên
               _isLoadingUsers
                   ? const Center(child: CircularProgressIndicator())
                   : DropdownButtonFormField<String>(
-                value: _selectedAssignee.isNotEmpty ? _selectedAssignee : null,
+                initialValue: _selectedAssignee.isNotEmpty ? _selectedAssignee : null,
                 decoration: InputDecoration(
                   labelText: 'Chọn nhân viên',
                   prefixIcon: const Icon(Icons.person),
@@ -197,21 +203,29 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
                   );
                 }).toList(),
                 onChanged: (value) {
-                  setState(() {
-                    _selectedAssignee = value ?? '';
-                  });
+                  if (mounted) {
+                    setState(() => _selectedAssignee = value ?? '');
+                  }
                 },
                 validator: (value) => value == null ? 'Vui lòng chọn nhân viên' : null,
               ),
               const SizedBox(height: 30),
 
-              // Nút thêm
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: _themNhiemVu,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Thêm Nhiệm Vụ', style: TextStyle(fontSize: 16)),
+                  onPressed: _isLoadingUsers ? null : _themNhiemVu,
+                  icon: _isLoadingUsers
+                      ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                  )
+                      : const Icon(Icons.add),
+                  label: Text(
+                    _isLoadingUsers ? 'Đang thêm...' : 'Thêm Nhiệm Vụ',
+                    style: const TextStyle(fontSize: 16),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue.shade700,
                     foregroundColor: Colors.white,

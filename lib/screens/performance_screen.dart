@@ -15,10 +15,10 @@ class _PerformanceScreenState extends State<PerformanceScreen> with SingleTicker
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   List<Task> _tasks = [];
   List<Map<String, String>> _allUsers = [];
-  List<Map<String, String>> _displayUsers = []; // Danh sách hiển thị theo quyền
+  List<Map<String, String>> _displayUsers = [];
   bool _isLoading = true;
   Map<String, Map<String, int>> _userStats = {};
-  String _timeFilter = 'all'; // all, week, month
+  String _timeFilter = 'all';
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
@@ -59,11 +59,10 @@ class _PerformanceScreenState extends State<PerformanceScreen> with SingleTicker
         _isLoading = false;
       });
 
-      // Lọc danh sách hiển thị theo quyền
       if (_currentRole == 'Employee') {
         _displayUsers = users.where((u) => u['username'] == _currentUsername).toList();
       } else {
-        _displayUsers = users; // Admin & Manager thấy tất cả
+        _displayUsers = users;
       }
 
       _calculateUserStats();
@@ -92,7 +91,6 @@ class _PerformanceScreenState extends State<PerformanceScreen> with SingleTicker
       endDate = DateTime(now.year, now.month + 1, 0);
     }
 
-    // Khởi tạo stats cho các user được phép xem
     for (var user in _displayUsers) {
       final username = user['username']!;
       stats[username] = {'completed': 0, 'pending': 0, 'total': 0};

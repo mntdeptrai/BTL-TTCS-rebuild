@@ -1,11 +1,11 @@
-// lib/models/task.dart
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Task {
   final String id;
   final String title;
   final String? description;
-  final DateTime dueDate;           // ← ĐÃ LÀ DateTime → CÓ THỂ CÓ GIỜ PHÚT
+  final DateTime dueDate;
   bool isCompleted;
   final String assignedTo;
   final String? createdBy;
@@ -24,19 +24,19 @@ class Task {
     this.isRead = false,
   });
 
-  // Quá hạn chưa?
+
   bool get isOverdue => DateTime.now().isAfter(dueDate) && !isCompleted;
 
-  // Cho phép đổi trạng thái không?
+
   bool get canChangeStatus => !isOverdue;
 
-  // Từ Firestore
+
   factory Task.fromJson(Map<String, dynamic> json, String id) {
     return Task(
       id: id,
       title: json['title'] ?? '',
       description: json['description'],
-      dueDate: (json['dueDate'] as Timestamp).toDate(), // ← Chuẩn, hỗ trợ giờ phút
+      dueDate: (json['dueDate'] as Timestamp).toDate(),
       isCompleted: json['isCompleted'] ?? false,
       assignedTo: json['assignedTo'] ?? '',
       createdBy: json['createdBy'],
@@ -45,12 +45,11 @@ class Task {
     );
   }
 
-  // Sang Firestore
   Map<String, dynamic> toJson() {
     return {
       'title': title,
       'description': description,
-      'dueDate': Timestamp.fromDate(dueDate), // ← Lưu cả giờ phút vào Firestore
+      'dueDate': Timestamp.fromDate(dueDate),
       'isCompleted': isCompleted,
       'assignedTo': assignedTo,
       'createdBy': createdBy,

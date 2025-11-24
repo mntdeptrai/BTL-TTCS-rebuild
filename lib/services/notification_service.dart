@@ -1,4 +1,3 @@
-// lib/services/notification_service.dart
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
@@ -42,7 +41,7 @@ class NotificationService {
 
         await _show(title, body, data['taskId']);
       } catch (e) {
-        print("Lỗi show notification: $e"); // Log để debug nếu crash
+        print("Lỗi show notification: $e");
       }
     });
   }

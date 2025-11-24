@@ -1,4 +1,3 @@
-// lib/main.dart
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -38,7 +37,6 @@ class MyApp extends StatelessWidget {
   final RemoteMessage? initialMessage;
   const MyApp({Key? key, this.initialMessage}) : super(key: key);
 
-  // HÀM CHUNG – MỞ TASK TỪ THÔNG BÁO (dù đã login hay chưa)
   static Future<void> openTaskFromNotification(BuildContext context, String taskId) async {
     if (!context.mounted) return;
 
@@ -56,7 +54,6 @@ class MyApp extends StatelessWidget {
       final userId = prefs.getString('userId');
 
       if (userId != null && userId.isNotEmpty) {
-        // ĐÃ ĐĂNG NHẬP → mở thẳng task
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (_) => TaskListScreen()),
@@ -70,7 +67,6 @@ class MyApp extends StatelessWidget {
           );
         }
       } else {
-        // CHƯA ĐĂNG NHẬP → lưu taskId, chuyển sang login
         await prefs.setString('pending_task_id', taskId);
         Navigator.pushAndRemoveUntil(
           context,
@@ -111,7 +107,6 @@ class _SplashHandlerState extends State<SplashHandler> {
   void initState() {
     super.initState();
 
-    // 1. Xử lý khi mở app từ thông báo (app bị kill)
     if (widget.initialMessage != null) {
       final taskId = widget.initialMessage!.data['taskId']?.toString();
       if (taskId != null && taskId.isNotEmpty) {
@@ -123,7 +118,6 @@ class _SplashHandlerState extends State<SplashHandler> {
       }
     }
 
-    // 2. Xử lý khi nhấn thông báo trong lúc app đang chạy (foreground/background)
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       final taskId = message.data['taskId']?.toString();
       if (taskId != null && taskId.isNotEmpty && mounted) {
@@ -138,7 +132,6 @@ class _SplashHandlerState extends State<SplashHandler> {
   }
 }
 
-// AUTHWRAPPER – TỰ ĐỘNG CHECK ĐĂNG NHẬP + MỞ PENDING TASK
 class AuthWrapper extends StatefulWidget {
   const AuthWrapper({Key? key}) : super(key: key);
 
@@ -159,14 +152,12 @@ class _AuthWrapperState extends State<AuthWrapper> {
     final pendingTaskId = prefs.getString('pending_task_id');
 
     if (userId != null && userId.isNotEmpty) {
-      // ĐÃ ĐĂNG NHẬP → vào TaskListScreen
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => TaskListScreen()),
       );
 
-      // Nếu có task đang chờ → mở luôn
       if (pendingTaskId != null) {
         await Future.delayed(const Duration(milliseconds: 600));
 
@@ -187,7 +178,6 @@ class _AuthWrapperState extends State<AuthWrapper> {
         }
       }
     } else {
-      // CHƯA ĐĂNG NHẬP → vào login
       if (mounted) {
         Navigator.pushReplacement(
           context,

@@ -1,4 +1,3 @@
-// lib/screens/profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
@@ -14,7 +13,7 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final _authService = AuthService.instance; // Dùng singleton
+  final _authService = AuthService.instance;
 
   String? _userId;
   String? _username;
@@ -81,7 +80,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       await _authService.capNhatProfile(
         _userId!,
-        _username!, // username không đổi, vẫn lấy từ Firestore
+        _username!,
         _phoneController.text.trim(),
       );
 
@@ -100,8 +99,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _changePassword() async {
-    final fb.User? currentUser = _authService.currentUser; // Dùng getter mới
-
+    final fb.User? currentUser = _authService.currentUser;
     if (currentUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Không tìm thấy người dùng hiện tại')),
@@ -170,7 +168,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 setStateDialog(() => isLoading = true);
 
                 try {
-                  // Re-authenticate (yêu cầu Firebase)
                   await currentUser.reauthenticateWithCredential(
                     fb.EmailAuthProvider.credential(
                       email: currentUser.email!,
@@ -207,7 +204,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Helper: hỏi mật khẩu cũ nếu cần (Firebase yêu cầu re-auth)
   Future<String> _promptOldPassword() async {
     final controller = TextEditingController();
     final result = await showDialog<String>(

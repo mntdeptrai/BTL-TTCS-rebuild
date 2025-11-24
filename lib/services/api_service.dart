@@ -19,7 +19,6 @@ class ApiService {
     final snapshot = await query.get();
     return snapshot.docs.map((doc) {
       final data = doc.data() as Map<String, dynamic>;
-      // Truyền userId từ Firestore hoặc dùng userId từ SharedPreferences nếu cần
       return Task.fromJson(data, doc.id);
     }).toList();
   }
@@ -30,7 +29,6 @@ class ApiService {
     final role = prefs.getString('role') ?? '';
     final currentUsername = prefs.getString('username') ?? '';
 
-    // Lấy vai trò của người được giao (assignedTo)
     final assigneeDoc = await _firestore
         .collection('users')
         .where('username', isEqualTo: assignedTo)
@@ -42,13 +40,11 @@ class ApiService {
     }
     final assigneeRole = assigneeDoc.docs.first.data()['role'] as String?;
 
-    // Kiểm tra quyền giao nhiệm vụ
     if (role == 'Admin') {
       if (assigneeRole == 'Admin') {
         print('Admin không thể giao nhiệm vụ cho Admin khác');
         throw Exception('Không thể giao nhiệm vụ cho Admin');
       }
-      // Admin có thể giao cho Manager hoặc Employee
     } else if (role == 'Manager') {
       if (assigneeRole == 'Admin') {
         print('Manager không thể giao nhiệm vụ cho Admin');
@@ -57,7 +53,6 @@ class ApiService {
         print('Manager không thể giao nhiệm vụ cho Manager khác');
         throw Exception('Không thể giao nhiệm vụ cho Manager');
       }
-      // Manager chỉ có thể giao cho Employee
     } else {
       print('Chỉ Admin hoặc Manager mới có thể giao nhiệm vụ');
       throw Exception('Bạn không có quyền giao nhiệm vụ');
@@ -70,7 +65,7 @@ class ApiService {
       'description': description,
       'dueDate': dueDate,
       'isCompleted': false,
-      'userId': userId, // Đảm bảo userId được lưu
+      'userId': userId,
       'assignedTo': assignedTo,
     });
     print('Đã thêm nhiệm vụ cho: $assignedTo bởi $currentUsername');

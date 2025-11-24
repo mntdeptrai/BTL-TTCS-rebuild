@@ -1,4 +1,3 @@
-// lib/screens/login_screen.dart
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../utils/error_handler.dart';
@@ -101,7 +100,6 @@ class _ManHinhDangNhapState extends State<ManHinhDangNhap>
           );
         }
       } else {
-        // ĐĂNG KÝ – DÙNG NAMED PARAMETERS (required)
         if (_passwordController.text != _confirmPasswordController.text) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Mật khẩu xác nhận không khớp')),
@@ -191,7 +189,6 @@ class _ManHinhDangNhapState extends State<ManHinhDangNhap>
                             ),
                             const SizedBox(height: 24),
 
-                            // FORM ĐĂNG NH�AP / ĐĂNG KÝ
                             AnimatedSwitcher(
                               duration: const Duration(milliseconds: 400),
                               child: _isLogin
