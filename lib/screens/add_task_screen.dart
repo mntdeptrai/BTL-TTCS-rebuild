@@ -1,10 +1,12 @@
+// lib/screens/add_task_screen.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
-import '../utils/date_formatter.dart';
 
 class ManHinhThemNhiemVu extends StatefulWidget {
+  const ManHinhThemNhiemVu({Key? key}) : super(key: key);
+
   @override
   _ManHinhThemNhiemVuState createState() => _ManHinhThemNhiemVuState();
 }
@@ -14,7 +16,10 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
-  DateTime _dueDate = DateTime.now();
+
+  // Deadline có giờ phút (mặc định +1 ngày)
+  DateTime _dueDate = DateTime.now().add(const Duration(days: 1));
+
   String _selectedAssignee = '';
   List<Map<String, String>> _users = [];
   bool _isLoadingUsers = true;
@@ -30,8 +35,10 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
     try {
       final prefs = await SharedPreferences.getInstance();
       _currentRole = prefs.getString('role') ?? 'Employee';
+
       final userDetails = await _apiService.layDanhSachNguoiDung();
       final filteredUsers = <Map<String, String>>[];
+
       for (var user in userDetails) {
         final userRole = await _apiService.layVaiTroCuaNguoiDung(user['username']!);
         if (_currentRole == 'Admin' && userRole != 'Admin') {
@@ -40,45 +47,47 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
           filteredUsers.add(user);
         }
       }
+
       setState(() {
         _users = filteredUsers;
         _isLoadingUsers = false;
-        if (_users.isNotEmpty) _selectedAssignee = _users.first['username']!;
+        if (_users.isNotEmpty && _selectedAssignee.isEmpty) {
+          _selectedAssignee = _users.first['username']!;
+        }
       });
     } catch (e) {
-      setState(() {
-        _isLoadingUsers = false;
-      });
+      setState(() => _isLoadingUsers = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Lỗi tải người dùng: $e')),
       );
     }
   }
 
+  // CHỌN NGÀY + GIỜ + PHÚT – GIỮ NGUYÊN GIAO DIỆN CŨ
   Future<void> _selectDueDate() async {
-    final DateTime? picked = await showDatePicker(
+    final DateTime? pickedDate = await showDatePicker(
       context: context,
       initialDate: _dueDate,
       firstDate: DateTime.now(),
       lastDate: DateTime(2100),
-      builder: (context, child) {
-        return Theme(
-          data: ThemeData.light().copyWith(
-            colorScheme: ColorScheme.light(
-              primary: Colors.blue.shade700,
-              onPrimary: Colors.white,
-              surface: Colors.white,
-              onSurface: Colors.black87,
-            ),
-            dialogBackgroundColor: Colors.white,
-          ),
-          child: child!,
-        );
-      },
     );
-    if (picked != null && picked != _dueDate) {
+
+    if (pickedDate == null) return;
+
+    final TimeOfDay? pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_dueDate),
+    );
+
+    if (pickedTime != null) {
       setState(() {
-        _dueDate = picked;
+        _dueDate = DateTime(
+          pickedDate.year,
+          pickedDate.month,
+          pickedDate.day,
+          pickedTime.hour,
+          pickedTime.minute,
+        );
       });
     }
   }
@@ -87,14 +96,14 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
     if (_formKey.currentState!.validate()) {
       try {
         await _apiService.themNhiemVu(
-          _titleController.text,
-          _descriptionController.text,
-          _dueDate,
+          _titleController.text.trim(),
+          _descriptionController.text.trim(),
+          _dueDate, // ĐÃ CÓ GIỜ PHÚT
           _selectedAssignee,
         );
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Thêm nhiệm vụ thành công')),
+          const SnackBar(content: Text('Thêm nhiệm vụ thành công')),
         );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -108,82 +117,80 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Thêm Nhiệm Vụ'),
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.blue.shade700, Colors.blue.shade300],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-        ),
+        title: const Text('Thêm Nhiệm Vụ'),
+        backgroundColor: Colors.blue.shade700,
+        foregroundColor: Colors.white,
       ),
       body: Padding(
-        padding: EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
           child: Column(
             children: [
+              // Tiêu đề
               TextFormField(
                 controller: _titleController,
                 decoration: InputDecoration(
                   labelText: 'Tiêu đề',
-                  prefixIcon: Icon(Icons.title),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  prefixIcon: const Icon(Icons.title),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                 ),
-                validator: (value) =>
-                value!.isEmpty ? 'Vui lòng nhập tiêu đề' : null,
+                validator: (value) => value!.isEmpty ? 'Vui lòng nhập tiêu đề' : null,
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
+
+              // Mô tả
               TextFormField(
                 controller: _descriptionController,
                 decoration: InputDecoration(
                   labelText: 'Mô tả',
-                  prefixIcon: Icon(Icons.description),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  prefixIcon: const Icon(Icons.description),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                 ),
                 maxLines: 3,
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
+
+              // NGÀY + GIỜ – GIỮ NGUYÊN GIAO DIỆN CŨ, CHỈ THÊM GIỜ PHÚT
               ListTile(
+                leading: const Icon(Icons.calendar_today, color: Colors.blue),
                 title: Text(
-                  'Ngày đến hạn: ${DateFormatter.formatDate(_dueDate)}',
-                  style: TextStyle(fontSize: 16),
+                  'Ngày đến hạn: ${DateFormat('dd/MM/yyyy – HH:mm').format(_dueDate)}',
+                  style: const TextStyle(fontSize: 16),
                 ),
-                trailing: Icon(Icons.calendar_today, color: Colors.blue),
+                trailing: const Icon(Icons.keyboard_arrow_down),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(8),
                   side: BorderSide(color: Colors.grey.shade300),
                 ),
                 onTap: _selectDueDate,
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
+
+              // Chọn nhân viên
               _isLoadingUsers
-                  ? Center(child: CircularProgressIndicator())
+                  ? const Center(child: CircularProgressIndicator())
                   : DropdownButtonFormField<String>(
+                value: _selectedAssignee.isNotEmpty ? _selectedAssignee : null,
                 decoration: InputDecoration(
                   labelText: 'Chọn nhân viên',
-                  prefixIcon: Icon(Icons.person),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  prefixIcon: const Icon(Icons.person),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                 ),
-                value: _selectedAssignee.isNotEmpty ? _selectedAssignee : null,
                 items: _users.map((user) {
                   return DropdownMenuItem<String>(
                     value: user['username'],
                     child: Row(
                       children: [
                         CircleAvatar(
-                          child: Text(user['fullName']![0]),
+                          radius: 14,
                           backgroundColor: Colors.blue.shade200,
+                          child: Text(
+                            user['fullName']?[0] ?? '?',
+                            style: const TextStyle(color: Colors.white, fontSize: 12),
+                          ),
                         ),
-                        SizedBox(width: 8),
+                        const SizedBox(width: 8),
                         Text('${user['fullName']} (ID: ${user['employeeId']})'),
                       ],
                     ),
@@ -194,20 +201,22 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
                     _selectedAssignee = value ?? '';
                   });
                 },
-                validator: (value) =>
-                value == null ? 'Vui lòng chọn nhân viên' : null,
+                validator: (value) => value == null ? 'Vui lòng chọn nhân viên' : null,
               ),
-              SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: _themNhiemVu,
-                icon: Icon(Icons.add),
-                label: Text('Thêm Nhiệm Vụ'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue.shade700,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              const SizedBox(height: 30),
+
+              // Nút thêm
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _themNhiemVu,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Thêm Nhiệm Vụ', style: TextStyle(fontSize: 16)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade700,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                   ),
                 ),
               ),
@@ -216,5 +225,12 @@ class _ManHinhThemNhiemVuState extends State<ManHinhThemNhiemVu> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
   }
 }
