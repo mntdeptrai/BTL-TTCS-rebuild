@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../models/task.dart';

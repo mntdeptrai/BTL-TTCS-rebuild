@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import 'screens/login_screen.dart';
 import 'screens/task_list_screen.dart';
 import 'screens/task_detail_screen.dart';
@@ -12,10 +11,10 @@ import 'firebase_options.dart';
 import 'services/notification_service.dart';
 import 'services/auth_service.dart';
 
-// Background handler – BẮT BUỘC top-level
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await NotificationService.initialize();
   print("Background message: ${message.messageId}");
 }
 
@@ -24,9 +23,25 @@ void main() async {
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await NotificationService.initialize();
-  await AuthService.refreshTokenOnLaunch(); // Cập nhật FCM token ngay khi mở app
+  await AuthService.refreshTokenOnLaunch();
 
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  final prefs = await SharedPreferences.getInstance();
+  final hasRequestedPermission = prefs.getBool('has_requested_notification_permission') ?? false;
+
+  if (!hasRequestedPermission) {
+    await FirebaseMessaging.instance.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+      criticalAlert: true,
+    );
+    await prefs.setBool('has_requested_notification_permission', true);
+    print("Đã hiện hộp thoại xin phép thông báo lần đầu");
+  } else {
+    print("Đã xin phép thông báo trước đó → không hiện lại");
+  }
 
   final RemoteMessage? initialMessage = await FirebaseMessaging.instance.getInitialMessage();
 
@@ -118,11 +133,22 @@ class _SplashHandlerState extends State<SplashHandler> {
       }
     }
 
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+    FirebaseMessaging.onMessageOpenedApp.listen((message) {
       final taskId = message.data['taskId']?.toString();
       if (taskId != null && taskId.isNotEmpty && mounted) {
         MyApp.openTaskFromNotification(context, taskId);
       }
+    });
+
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      final notification = message.notification;
+      final data = message.data;
+
+      NotificationService.showNotification(
+        title: notification?.title ?? data['title'] ?? 'Thông báo',
+        body: notification?.body ?? data['body'] ?? 'Bạn có thông báo mới',
+        taskId: data['taskId']?.toString(),
+      );
     });
   }
 
@@ -134,7 +160,6 @@ class _SplashHandlerState extends State<SplashHandler> {
 
 class AuthWrapper extends StatefulWidget {
   const AuthWrapper({Key? key}) : super(key: key);
-
   @override
   State<AuthWrapper> createState() => _AuthWrapperState();
 }
@@ -160,7 +185,6 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
       if (pendingTaskId != null) {
         await Future.delayed(const Duration(milliseconds: 600));
-
         try {
           final doc = await FirebaseFirestore.instance.collection('tasks').doc(pendingTaskId).get();
           if (doc.exists && mounted) {

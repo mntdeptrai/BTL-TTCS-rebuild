@@ -77,7 +77,6 @@ class _ManHinhDangNhapState extends State<ManHinhDangNhap>
 
     try {
       if (_isLogin) {
-        // ĐĂNG NHẬP
         final user = await _authService.dangNhap(
           _identifierController.text.trim(),
           _passwordController.text,
@@ -112,7 +111,7 @@ class _ManHinhDangNhapState extends State<ManHinhDangNhap>
           email: _emailController.text.trim(),
           fullName: _fullNameController.text.trim(),
           password: _passwordController.text,
-          role: 'Employee', // hoặc để người dùng chọn sau
+          role: 'Employee',
           phoneNumber: _phoneController.text.trim(),
         );
 

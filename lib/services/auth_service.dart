@@ -91,7 +91,6 @@ class AuthService {
         prefs.setString('role', role),
       ]);
 
-      // CẬP NHẬT FCM TOKEN SAU KHI ĐĂNG KÝ
       await _updateFcmToken(uid);
 
       return user;
@@ -173,7 +172,6 @@ class AuthService {
 
   fb.User? get currentUser => _auth.currentUser;
 
-  // Helper
   bool _isEmail(String s) => RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(s);
   bool _isPhoneNumber(String s) => RegExp(r'^\d{9,11}$').hasMatch(s);
 }

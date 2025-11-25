@@ -7,13 +7,18 @@ class NotificationService {
 
   static Future<void> initialize() async {
     const AndroidInitializationSettings android = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const InitializationSettings settings = InitializationSettings(android: android);
+    const DarwinInitializationSettings ios = DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+    );
+    const InitializationSettings settings = InitializationSettings(android: android, iOS: ios);
 
     await _plugin.initialize(
       settings,
       onDidReceiveNotificationResponse: (details) {
         if (details.payload != null) {
-          print("Clicked: ${details.payload}");
+          print("Thông báo được bấm – Task ID: ${details.payload}");
         }
       },
     );
@@ -21,32 +26,34 @@ class NotificationService {
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
       'high_importance_channel',
       'Thông báo nhiệm vụ',
-      description: 'Thông báo nhiệm vụ mới',
+      description: 'Thông báo khi có nhiệm vụ mới hoặc sắp hết hạn',
       importance: Importance.max,
       playSound: true,
       enableVibration: true,
+      showBadge: true,
     );
 
-    await _plugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(channel);
+    final androidPlugin = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    await androidPlugin?.createNotificationChannel(channel);
 
     FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
-      try {
-        final notification = message.notification;
-        final data = message.data;
+      final notification = message.notification;
+      final data = message.data;
 
-        String title = notification?.title ?? data['title'] ?? 'Nhiệm vụ mới';
-        String body = notification?.body ?? data['body'] ?? 'Bạn được giao nhiệm vụ mới';
+      String title = notification?.title ?? data['title'] ?? 'Nhiệm vụ mới';
+      String body = notification?.body ?? data['body'] ?? 'Bạn được giao một nhiệm vụ mới';
 
-        await _show(title, body, data['taskId']);
-      } catch (e) {
-        print("Lỗi show notification: $e");
-      }
+      final String? taskId = data['taskId']?.toString();
+
+      await showNotification(title: title, body: body, taskId: taskId);
     });
   }
 
-  static Future<void> _show(String title, String body, String? taskId) async {
+  static Future<void> showNotification({
+    required String title,
+    required String body,
+    String? taskId,
+  }) async {
     const AndroidNotificationDetails android = AndroidNotificationDetails(
       'high_importance_channel',
       'Thông báo nhiệm vụ',
@@ -55,13 +62,16 @@ class NotificationService {
       playSound: true,
       enableVibration: true,
       autoCancel: true,
+      ticker: 'Nhiệm vụ mới',
     );
+
+    const NotificationDetails details = NotificationDetails(android: android);
 
     await _plugin.show(
       _id++,
       title,
       body,
-      const NotificationDetails(android: android),
+      details,
       payload: taskId,
     );
   }
