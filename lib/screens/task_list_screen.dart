@@ -99,6 +99,8 @@ class _TaskListScreenState extends State<TaskListScreen>
         filteredTasks = tasks.where((t) => t.assignedTo == _currentUsername).toList();
       }
 
+      filteredTasks.sort((a, b) => b.dueDate.compareTo(a.dueDate));
+
       setState(() {
         _tasks = filteredTasks;
         _isLoading = false;
@@ -128,14 +130,19 @@ class _TaskListScreenState extends State<TaskListScreen>
 
   void _filterTasks() {
     final query = _searchController.text.toLowerCase();
+
+    List<Task> tempFilteredTasks = _tasks.where((task) {
+      final matchesSearch = task.title.toLowerCase().contains(query) ||
+          task.assignedTo.toLowerCase().contains(query);
+      if (_filterStatus == 'all') return matchesSearch;
+      if (_filterStatus == 'completed') return matchesSearch && task.isCompleted;
+      return matchesSearch && !task.isCompleted;
+    }).toList();
+
+    tempFilteredTasks.sort((a, b) => b.dueDate.compareTo(a.dueDate));
+
     setState(() {
-      _filteredTasks = _tasks.where((task) {
-        final matchesSearch = task.title.toLowerCase().contains(query) ||
-            task.assignedTo.toLowerCase().contains(query);
-        if (_filterStatus == 'all') return matchesSearch;
-        if (_filterStatus == 'completed') return matchesSearch && task.isCompleted;
-        return matchesSearch && !task.isCompleted;
-      }).toList();
+      _filteredTasks = tempFilteredTasks;
     });
   }
 

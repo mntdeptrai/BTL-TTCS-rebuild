@@ -1,4 +1,3 @@
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Task {
@@ -6,6 +5,7 @@ class Task {
   final String title;
   final String? description;
   final DateTime dueDate;
+  final DateTime createdAt;
   bool isCompleted;
   final String assignedTo;
   final String? createdBy;
@@ -17,6 +17,7 @@ class Task {
     required this.title,
     this.description,
     required this.dueDate,
+    required this.createdAt,
     this.isCompleted = false,
     required this.assignedTo,
     this.createdBy,
@@ -24,12 +25,9 @@ class Task {
     this.isRead = false,
   });
 
-
   bool get isOverdue => DateTime.now().isAfter(dueDate) && !isCompleted;
 
-
   bool get canChangeStatus => !isOverdue;
-
 
   factory Task.fromJson(Map<String, dynamic> json, String id) {
     return Task(
@@ -37,6 +35,8 @@ class Task {
       title: json['title'] ?? '',
       description: json['description'],
       dueDate: (json['dueDate'] as Timestamp).toDate(),
+      createdAt: (json['createdAt'] as Timestamp?)?.toDate() ??
+          (json['dueDate'] as Timestamp).toDate(),
       isCompleted: json['isCompleted'] ?? false,
       assignedTo: json['assignedTo'] ?? '',
       createdBy: json['createdBy'],
@@ -50,6 +50,7 @@ class Task {
       'title': title,
       'description': description,
       'dueDate': Timestamp.fromDate(dueDate),
+      'createdAt': Timestamp.fromDate(createdAt),
       'isCompleted': isCompleted,
       'assignedTo': assignedTo,
       'createdBy': createdBy,
@@ -63,6 +64,7 @@ class Task {
     String? title,
     String? description,
     DateTime? dueDate,
+    DateTime? createdAt,
     bool? isCompleted,
     String? assignedTo,
     String? createdBy,
@@ -74,6 +76,7 @@ class Task {
       title: title ?? this.title,
       description: description ?? this.description,
       dueDate: dueDate ?? this.dueDate,
+      createdAt: createdAt ?? this.createdAt,
       isCompleted: isCompleted ?? this.isCompleted,
       assignedTo: assignedTo ?? this.assignedTo,
       createdBy: createdBy ?? this.createdBy,
