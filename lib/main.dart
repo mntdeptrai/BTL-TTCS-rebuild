@@ -15,30 +15,35 @@ import 'services/auth_service.dart';
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await NotificationService.initialize();
-  print("Background message: ${message.messageId}");
+  print("Background message received: ${message.messageId}");
 }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  await NotificationService.initialize();
-  await AuthService.refreshTokenOnLaunch();
+  try {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    await NotificationService.initialize();
+    await AuthService.refreshTokenOnLaunch();
+
+    final prefs = await SharedPreferences.getInstance();
+    final hasRequested = prefs.getBool('has_requested_notification_permission') ?? false;
+
+    if (!hasRequested) {
+      await FirebaseMessaging.instance.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+        criticalAlert: true,
+      );
+      await prefs.setBool('has_requested_notification_permission', true);
+    }
+  } catch (e, stackTrace) {
+    print("Lỗi khởi tạo ứng dụng: $e");
+    print(stackTrace);
+  }
 
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
-  final prefs = await SharedPreferences.getInstance();
-  final hasRequestedPermission = prefs.getBool('has_requested_notification_permission') ?? false;
-
-  if (!hasRequestedPermission) {
-    await FirebaseMessaging.instance.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-      criticalAlert: true,
-    );
-    await prefs.setBool('has_requested_notification_permission', true);
-  }
 
   final RemoteMessage? initialMessage = await FirebaseMessaging.instance.getInitialMessage();
 
@@ -49,7 +54,6 @@ class MyApp extends StatelessWidget {
   final RemoteMessage? initialMessage;
 
   const MyApp({Key? key, this.initialMessage}) : super(key: key);
-
 
   static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -81,7 +85,6 @@ class _SplashHandlerState extends State<SplashHandler> {
   @override
   void initState() {
     super.initState();
-
 
     if (widget.initialMessage != null) {
       final taskId = widget.initialMessage!.data['taskId']?.toString();
@@ -132,23 +135,22 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   Future<void> _checkLoginStatus() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getString('userId');
-    final pendingTaskId = prefs.getString('pending_task_id');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('userId');
+      final pendingTaskId = prefs.getString('pending_task_id');
 
-    if (userId != null && userId.isNotEmpty) {
-      if (!mounted) return;
+      if (userId != null && userId.isNotEmpty) {
+        if (!mounted) return;
 
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => TaskListScreen()),
+        );
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => TaskListScreen()),
-      );
+        if (pendingTaskId != null && mounted) {
+          await Future.delayed(const Duration(milliseconds: 600));
 
-      if (pendingTaskId != null) {
-        await Future.delayed(const Duration(milliseconds: 600));
-
-        try {
           final doc = await FirebaseFirestore.instance
               .collection('tasks')
               .doc(pendingTaskId)
@@ -164,11 +166,17 @@ class _AuthWrapperState extends State<AuthWrapper> {
             }
             await prefs.remove('pending_task_id');
           }
-        } catch (e) {
-          print("Lỗi mở pending task: $e");
+        }
+      } else {
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const ManHinhDangNhap()),
+          );
         }
       }
-    } else {
+    } catch (e) {
+      print("Lỗi trong AuthWrapper: $e");
       if (mounted) {
         Navigator.pushReplacement(
           context,
