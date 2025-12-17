@@ -38,9 +38,6 @@ void main() async {
       criticalAlert: true,
     );
     await prefs.setBool('has_requested_notification_permission', true);
-    print("Đã hiện hộp thoại xin phép thông báo lần đầu");
-  } else {
-    print("Đã xin phép thông báo trước đó → không hiện lại");
   }
 
   final RemoteMessage? initialMessage = await FirebaseMessaging.instance.getInitialMessage();
@@ -50,49 +47,11 @@ void main() async {
 
 class MyApp extends StatelessWidget {
   final RemoteMessage? initialMessage;
+
   const MyApp({Key? key, this.initialMessage}) : super(key: key);
 
-  static Future<void> openTaskFromNotification(BuildContext context, String taskId) async {
-    if (!context.mounted) return;
 
-    try {
-      final doc = await FirebaseFirestore.instance.collection('tasks').doc(taskId).get();
-      if (!doc.exists) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Nhiệm vụ không tồn tại hoặc đã bị xóa')),
-        );
-        return;
-      }
-
-      final task = Task.fromJson(doc.data()!, doc.id);
-      final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getString('userId');
-
-      if (userId != null && userId.isNotEmpty) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => TaskListScreen()),
-              (route) => false,
-        );
-
-        if (context.mounted) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => TaskDetailScreen(task: task)),
-          );
-        }
-      } else {
-        await prefs.setString('pending_task_id', taskId);
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const ManHinhDangNhap()),
-              (route) => false,
-        );
-      }
-    } catch (e) {
-      print("Lỗi mở task từ thông báo: $e");
-    }
-  }
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
   @override
   Widget build(BuildContext context) {
@@ -104,6 +63,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         scaffoldBackgroundColor: Colors.grey.shade100,
       ),
+      navigatorKey: navigatorKey,
       home: SplashHandler(initialMessage: initialMessage),
     );
   }
@@ -122,21 +82,20 @@ class _SplashHandlerState extends State<SplashHandler> {
   void initState() {
     super.initState();
 
+
     if (widget.initialMessage != null) {
       final taskId = widget.initialMessage!.data['taskId']?.toString();
       if (taskId != null && taskId.isNotEmpty) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            MyApp.openTaskFromNotification(context, taskId);
-          }
+          NotificationService.handleNotificationClick(taskId);
         });
       }
     }
 
-    FirebaseMessaging.onMessageOpenedApp.listen((message) {
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       final taskId = message.data['taskId']?.toString();
-      if (taskId != null && taskId.isNotEmpty && mounted) {
-        MyApp.openTaskFromNotification(context, taskId);
+      if (taskId != null && taskId.isNotEmpty) {
+        NotificationService.handleNotificationClick(taskId);
       }
     });
 
@@ -160,6 +119,7 @@ class _SplashHandlerState extends State<SplashHandler> {
 
 class AuthWrapper extends StatefulWidget {
   const AuthWrapper({Key? key}) : super(key: key);
+
   @override
   State<AuthWrapper> createState() => _AuthWrapperState();
 }
@@ -178,6 +138,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
     if (userId != null && userId.isNotEmpty) {
       if (!mounted) return;
+
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => TaskListScreen()),
@@ -185,8 +147,13 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
       if (pendingTaskId != null) {
         await Future.delayed(const Duration(milliseconds: 600));
+
         try {
-          final doc = await FirebaseFirestore.instance.collection('tasks').doc(pendingTaskId).get();
+          final doc = await FirebaseFirestore.instance
+              .collection('tasks')
+              .doc(pendingTaskId)
+              .get();
+
           if (doc.exists && mounted) {
             final task = Task.fromJson(doc.data()!, doc.id);
             if (mounted) {
