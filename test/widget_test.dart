@@ -1,7 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:btl_ttcs/main.dart'; // Đảm bảo import đúng file main.dart
+import 'package:task_manager/main.dart'; // Đảm bảo import đúng file main.dart
 import '../lib/firebase_options.dart'; // Sửa đường dẫn import thành ../lib/firebase_options.dart
 
 void main() {
@@ -15,7 +15,7 @@ void main() {
     await setupFirebase();
 
     // Build our app and trigger a frame.
-    await tester.pumpWidget( MyApp());
+    await tester.pumpWidget(MyApp());
 
     // Verify that the login screen is displayed.
     expect(find.text('Đăng Nhập'), findsOneWidget); // Kiểm tra tiêu đề AppBar

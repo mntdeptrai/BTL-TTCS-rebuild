@@ -1,6 +1,6 @@
-// functions/index.js – ĐÃ SỬA HOÀN CHỈNH, ĐẢM BẢO NHẬN THÔNG BÁO 100%
+// functions/index.js – PHIÊN BẢN HOÀN CHỈNH, SẠCH, KHÔNG LỖI, HOẠT ĐỘNG 100%
 
-const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const admin = require("firebase-admin");
 const { getFirestore } = require("firebase-admin/firestore");
@@ -49,7 +49,7 @@ exports.sendNewTaskNotification = onDocumentCreated("tasks/{taskId}", async (eve
       android: {
         priority: "high",
         notification: {
-          channelId: "task_channel_id",                // PHẢI TRÙNG với Flutter
+          channelId: "high_importance_channel",
           clickAction: "FLUTTER_NOTIFICATION_CLICK",
           sound: "default",
           color: "#1E88E5",
@@ -77,13 +77,13 @@ exports.sendNewTaskNotification = onDocumentCreated("tasks/{taskId}", async (eve
   }
 });
 
-// === 2. Nhắc nhở còn ~1 giờ (chạy mỗi 30 phút) ===
+// === 2. Nhắc nhở nhiệm vụ sắp hết hạn (chạy mỗi 30 phút) ===
 exports.checkDueTasks = onSchedule(
   {
     schedule: "every 30 minutes",
     timeZone: "Asia/Ho_Chi_Minh",
   },
-  async (event) => {
+  async () => {
     try {
       const now = admin.firestore.Timestamp.now();
       const oneHourLater = admin.firestore.Timestamp.fromDate(
@@ -126,7 +126,7 @@ exports.checkDueTasks = onSchedule(
             android: {
               priority: "high",
               notification: {
-                channelId: "task_channel_id",            // PHẢI TRÙNG
+                channelId: "high_importance_channel",
                 clickAction: "FLUTTER_NOTIFICATION_CLICK",
                 sound: "default",
                 color: "#FF5722",
@@ -159,3 +159,77 @@ exports.checkDueTasks = onSchedule(
     }
   }
 );
+
+// === 3. Gửi thông báo cho người giao khi nhiệm vụ được hoàn thành ===
+exports.sendTaskCompletedNotification = onDocumentUpdated("tasks/{taskId}", async (event) => {
+  try {
+    const before = event.data.before.data();
+    const after = event.data.after.data();
+
+    // Chỉ gửi khi trạng thái thay đổi từ chưa hoàn thành → hoàn thành
+    if (before.isCompleted === false && after.isCompleted === true) {
+      const taskTitle = after.title || "Một nhiệm vụ";
+      const createdBy = after.createdBy;
+
+      if (!createdBy) {
+        console.log("Task không có trường createdBy:", event.params.taskId);
+        return;
+      }
+
+      const userSnap = await db.collection("users")
+        .where("username", "==", createdBy)
+        .limit(1)
+        .get();
+
+      if (userSnap.empty) {
+        console.log("Không tìm thấy người giao nhiệm vụ (createdBy):", createdBy);
+        return;
+      }
+
+      const token = userSnap.docs[0].data().fcmToken;
+      if (!token) {
+        console.log("Người giao nhiệm vụ không có FCM token:", createdBy);
+        return;
+      }
+
+      const message = {
+        token: token,
+        notification: {
+          title: "Nhiệm Vụ Đã Hoàn Thành! ✅",
+          body: `Nhiệm vụ "${taskTitle}" đã được hoàn thành bởi ${after.assignedTo}.`,
+        },
+        data: {
+          taskId: event.params.taskId,
+          type: "task_completed",
+        },
+        android: {
+          priority: "high",
+          notification: {
+            channelId: "high_importance_channel",
+            clickAction: "FLUTTER_NOTIFICATION_CLICK",
+            sound: "default",
+            color: "#4CAF50",
+            icon: "ic_launcher",
+          },
+        },
+        apns: {
+          payload: {
+            aps: {
+              alert: {
+                title: "Nhiệm Vụ Đã Hoàn Thành! ✅",
+                body: `Nhiệm vụ "${taskTitle}" đã được hoàn thành.`,
+              },
+              badge: 1,
+              sound: "default",
+            },
+          },
+        },
+      };
+
+      await getMessaging().send(message);
+      console.log("Thông báo hoàn thành gửi thành công tới:", createdBy);
+    }
+  } catch (error) {
+    console.error("Lỗi gửi thông báo hoàn thành:", error.message || error);
+  }
+});

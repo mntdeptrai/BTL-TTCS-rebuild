@@ -7,15 +7,16 @@ class ApiService {
 
   Future<List<Task>> layNhiemVu() async {
     final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getString('userId') ?? '';
     final username = prefs.getString('username') ?? '';
     final role = prefs.getString('role') ?? '';
+
     Query query;
     if (role == 'Admin' || role == 'Manager') {
       query = _firestore.collection('tasks');
     } else {
       query = _firestore.collection('tasks').where('assignedTo', isEqualTo: username);
     }
+
     final snapshot = await query.get();
     return snapshot.docs.map((doc) {
       final data = doc.data() as Map<String, dynamic>;
@@ -23,9 +24,13 @@ class ApiService {
     }).toList();
   }
 
-  Future<void> themNhiemVu(String title, String description, DateTime dueDate, String assignedTo) async {
+  Future<void> themNhiemVu(
+      String title,
+      String? description,
+      DateTime dueDate,
+      String assignedTo,
+      ) async {
     final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getString('userId') ?? '';
     final role = prefs.getString('role') ?? '';
     final currentUsername = prefs.getString('username') ?? '';
 
@@ -34,41 +39,38 @@ class ApiService {
         .where('username', isEqualTo: assignedTo)
         .limit(1)
         .get();
+
     if (assigneeDoc.docs.isEmpty) {
-      print('Không tìm thấy người dùng với username: $assignedTo');
       throw Exception('Người dùng không tồn tại');
     }
+
     final assigneeRole = assigneeDoc.docs.first.data()['role'] as String?;
 
     if (role == 'Admin') {
       if (assigneeRole == 'Admin') {
-        print('Admin không thể giao nhiệm vụ cho Admin khác');
         throw Exception('Không thể giao nhiệm vụ cho Admin');
       }
     } else if (role == 'Manager') {
-      if (assigneeRole == 'Admin') {
-        print('Manager không thể giao nhiệm vụ cho Admin');
-        throw Exception('Manager không thể giao nhiệm vụ cho Admin');
-      } else if (assigneeRole == 'Manager') {
-        print('Manager không thể giao nhiệm vụ cho Manager khác');
-        throw Exception('Không thể giao nhiệm vụ cho Manager');
+      if (assigneeRole == 'Admin' || assigneeRole == 'Manager') {
+        throw Exception('Manager không thể giao nhiệm vụ cho Admin hoặc Manager khác');
       }
     } else {
-      print('Chỉ Admin hoặc Manager mới có thể giao nhiệm vụ');
       throw Exception('Bạn không có quyền giao nhiệm vụ');
     }
 
     final taskId = DateTime.now().millisecondsSinceEpoch.toString();
+
     await _firestore.collection('tasks').doc(taskId).set({
       'id': taskId,
       'title': title,
-      'description': description,
-      'dueDate': dueDate,
+      'description': description ?? '',
+      'dueDate': Timestamp.fromDate(dueDate),
+      'createdAt': FieldValue.serverTimestamp(),
       'isCompleted': false,
-      'userId': userId,
       'assignedTo': assignedTo,
+      'createdBy': currentUsername,
+      'isRead': false,
     });
-    print('Đã thêm nhiệm vụ cho: $assignedTo bởi $currentUsername');
   }
 
   Future<void> capNhatNhiemVu(String taskId, bool isCompleted) async {
@@ -93,6 +95,7 @@ class ApiService {
         .where('username', isEqualTo: username)
         .limit(1)
         .get();
+
     if (snapshot.docs.isNotEmpty) {
       return snapshot.docs.first.data()['role'] as String?;
     }
